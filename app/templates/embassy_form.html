@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Podstawowe metadane poselstwa.</p>
+    </div>
+  </div>
+
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="title">Tytuł poselstwa</label>
+      <input id="title" type="text" name="title" value="{{ form_data.title }}" required>
+    </div>
+    <div class="field">
+      <label for="year_label">Rok</label>
+      <input id="year_label" type="text" name="year_label" value="{{ form_data.year_label }}" placeholder="np. 1492">
+    </div>
+    <div class="field full">
+      <label for="mission_subject">Przedmiot misji</label>
+      <input id="mission_subject" type="text" name="mission_subject" value="{{ form_data.mission_subject }}">
+    </div>
+    <div class="field">
+      <label for="appointment_date_id">Data mianowania</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="appointment_date_id" type="hidden" name="appointment_date_id" value="{{ form_data.appointment_date_id }}">
+        <span id="appointment_date_id_label" class="date-pill">{{ date_label(form_data.appointment_date_id|int if form_data.appointment_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę mianowania" aria-label="Ustaw datę mianowania" data-entity-type="embassy" data-record-id="{{ embassy.id if embassy else 0 }}" data-field-name="appointment_date_id" data-target-input="appointment_date_id" data-target-label="appointment_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="arrival_in_rome_date_id">Dotarcie do Rzymu</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="arrival_in_rome_date_id" type="hidden" name="arrival_in_rome_date_id" value="{{ form_data.arrival_in_rome_date_id }}">
+        <span id="arrival_in_rome_date_id_label" class="date-pill">{{ date_label(form_data.arrival_in_rome_date_id|int if form_data.arrival_in_rome_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę dotarcia do Rzymu" aria-label="Ustaw datę dotarcia do Rzymu" data-entity-type="embassy" data-record-id="{{ embassy.id if embassy else 0 }}" data-field-name="arrival_in_rome_date_id" data-target-input="arrival_in_rome_date_id" data-target-label="arrival_in_rome_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="audience_date_id">Audiencja</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="audience_date_id" type="hidden" name="audience_date_id" value="{{ form_data.audience_date_id }}">
+        <span id="audience_date_id_label" class="date-pill">{{ date_label(form_data.audience_date_id|int if form_data.audience_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę audiencji" aria-label="Ustaw datę audiencji" data-entity-type="embassy" data-record-id="{{ embassy.id if embassy else 0 }}" data-field-name="audience_date_id" data-target-input="audience_date_id" data-target-label="audience_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="departure_from_rome_date_id">Wyjazd z Rzymu</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="departure_from_rome_date_id" type="hidden" name="departure_from_rome_date_id" value="{{ form_data.departure_from_rome_date_id }}">
+        <span id="departure_from_rome_date_id_label" class="date-pill">{{ date_label(form_data.departure_from_rome_date_id|int if form_data.departure_from_rome_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę wyjazdu z Rzymu" aria-label="Ustaw datę wyjazdu z Rzymu" data-entity-type="embassy" data-record-id="{{ embassy.id if embassy else 0 }}" data-field-name="departure_from_rome_date_id" data-target-input="departure_from_rome_date_id" data-target-label="departure_from_rome_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="return_to_poland_date_id">Powrót do Polski</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="return_to_poland_date_id" type="hidden" name="return_to_poland_date_id" value="{{ form_data.return_to_poland_date_id }}">
+        <span id="return_to_poland_date_id_label" class="date-pill">{{ date_label(form_data.return_to_poland_date_id|int if form_data.return_to_poland_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę powrotu do Polski" aria-label="Ustaw datę powrotu do Polski" data-entity-type="embassy" data-record-id="{{ embassy.id if embassy else 0 }}" data-field-name="return_to_poland_date_id" data-target-input="return_to_poland_date_id" data-target-label="return_to_poland_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field full">
+      <label for="description_text">Opis</label>
+      <textarea id="description_text" name="description_text">{{ form_data.description_text }}</textarea>
+    </div>
+
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      {% if embassy %}
+      <a class="button ghost" href="{{ url_for('embassy_detail', embassy_id=embassy.id) }}">Anuluj</a>
+      {% else %}
+      <a class="button ghost" href="{{ url_for('embassies_list') }}">Anuluj</a>
+      {% endif %}
+    </div>
+  </form>
+</section>
+{% endblock %}

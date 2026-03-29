@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Data historyczna korzysta z etykiety widocznej dla badacza oraz technicznego zakresu sortowania. Pola ISO są uzupełniane automatycznie na podstawie zakresu sortowania.</p>
+    </div>
+    {% if date_record %}
+    <a class="button ghost" href="{{ url_for('dates_list') }}">Wróć do listy dat</a>
+    {% else %}
+    <a class="button ghost" href="{{ url_for('dates_list') }}">Wróć do modułu dat</a>
+    {% endif %}
+  </div>
+
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="date_kind">Typ daty</label>
+      <select id="date_kind" name="date_kind">
+        {% for item in date_kind_options %}
+        <option value="{{ item }}" {% if form_data.date_kind == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="certainty">Pewność</label>
+      <select id="certainty" name="certainty">
+        {% for item in certainty_options %}
+        <option value="{{ item }}" {% if form_data.certainty == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label for="display_label">Etykieta wyświetlana</label>
+      <input id="display_label" type="text" name="display_label" value="{{ form_data.display_label }}" required>
+    </div>
+    <input id="start_date_iso" type="hidden" name="start_date_iso" value="{{ form_data.start_date_iso }}">
+    <input id="end_date_iso" type="hidden" name="end_date_iso" value="{{ form_data.end_date_iso }}">
+    <div class="field full">
+      <label>Zakres daty do sortowania i filtrowania</label>
+      <div class="inline-copy-field">
+        <input id="sort_key_start" type="text" name="sort_key_start" value="{{ form_data.sort_key_start }}" placeholder="YYYY-MM-DD">
+        <button type="button" class="button ghost icon-action" id="historical-date-copy-range" title="Skopiuj wartość od do pola do" aria-label="Skopiuj wartość od do pola do">→</button>
+        <input id="sort_key_end" type="text" name="sort_key_end" value="{{ form_data.sort_key_end }}" placeholder="YYYY-MM-DD">
+      </div>
+    </div>
+    <div class="field full">
+      <label for="comment">Komentarz</label>
+      <textarea id="comment" name="comment">{{ form_data.comment }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('dates_list') }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+<script>
+  (function () {
+    const startInput = document.getElementById('sort_key_start');
+    const endInput = document.getElementById('sort_key_end');
+    const copyButton = document.getElementById('historical-date-copy-range');
+    if (!startInput || !endInput || !copyButton) {
+      return;
+    }
+    copyButton.addEventListener('click', () => {
+      if (startInput.value.trim()) {
+        endInput.value = startInput.value.trim();
+      }
+    });
+  })();
+</script>
+{% endblock %}

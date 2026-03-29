@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Formularz słownika motywów używanych do oznaczania treści w źródłach.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid">
+    {% if return_to is defined %}
+    <input type="hidden" name="return_to" value="{{ return_to }}">
+    {% endif %}
+    <div class="field">
+      <label for="name">Nazwa</label>
+      <input id="name" type="text" name="name" value="{{ form_data.name }}" required>
+    </div>
+    <div class="field">
+      <label for="color_code">Kolor</label>
+      <div class="color-picker-row">
+        <input id="color_code" class="color-picker-input" type="color" name="color_code" value="{{ form_data.color_code or '#7a5c3e' }}">
+        <span class="date-pill color-code-preview" id="color_code_preview">{{ form_data.color_code or '#7a5c3e' }}</span>
+      </div>
+    </div>
+    <div class="field full">
+      <label for="description_text">Opis</label>
+      <textarea id="description_text" name="description_text">{{ form_data.description_text }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ cancel_url if cancel_url is defined else url_for('themes_list') }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+<script>
+  (function () {
+    const input = document.getElementById('color_code');
+    const preview = document.getElementById('color_code_preview');
+    if (!input || !preview) return;
+    const syncPreview = () => {
+      preview.textContent = input.value.toUpperCase();
+    };
+    input.addEventListener('input', syncPreview);
+    syncPreview();
+  })();
+</script>
+{% endblock %}

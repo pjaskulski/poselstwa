@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Typy źródeł{% endblock %}
+{% block content %}
+<section class="card toolbar">
+  <div class="section-head">
+    <div>
+      <h2>Typy źródeł</h2>
+      <p class="muted">Słownik wartości używanych w polu „Typ źródła”.</p>
+    </div>
+    <a class="button secondary text-action" href="{{ url_for('parameter_source_type_create') }}">Dodaj typ</a>
+  </div>
+</section>
+<section class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Etykieta</th>
+        <th>Wartość techniczna</th>
+        <th>Kolejność</th>
+        <th>Aktywny</th>
+        <th>Użycia</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td>{{ row.value }}</td>
+        <td>{{ row.sort_order }}</td>
+        <td>{{ 'tak' if row.is_active else 'nie' }}</td>
+        <td>{{ row.usage_count }}</td>
+        <td><a class="icon-link" title="Edytuj typ źródła" aria-label="Edytuj typ źródła" href="{{ url_for('parameter_source_type_edit', type_id=row.id) }}">✎</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Brak wpisów w słowniku.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Osoby{% endblock %}
+{% block content %}
+<div class="toolbar card">
+  <form class="filters" method="get">
+    <div class="filter-search-stack">
+      <input class="filter-search-wide" type="search" name="q" value="{{ q }}" placeholder="Szukaj osoby, wariantu lub noty">
+      <button type="button" class="filter-toggle" id="person-date-filter-toggle">Filtrowanie dat</button>
+    </div>
+    <button type="submit">Filtruj</button>
+    {% if q or date_from or date_to %}
+    <a class="button ghost" href="{{ url_for('persons_list') }}">Wyczyść</a>
+    {% endif %}
+    <a class="button secondary" href="{{ url_for('persons_export') }}">Eksport CSV</a>
+    <a class="button" href="{{ url_for('person_create') }}">Dodaj osobę</a>
+    <div class="date-filter-panel {% if not (date_from or date_to) %}hidden{% endif %}" id="person-date-filter-panel">
+      <div class="field">
+        <label for="date_field">Data</label>
+        <select id="date_field" name="date_field">
+          <option value="birth" {% if date_field == 'birth' %}selected{% endif %}>data urodzenia</option>
+          <option value="death" {% if date_field == 'death' %}selected{% endif %}>data śmierci</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="date_from">Zakres od</label>
+        <input id="date_from" type="text" name="date_from" value="{{ date_from }}" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="field">
+        <label for="date_to">Zakres do</label>
+        <input id="date_to" type="text" name="date_to" value="{{ date_to }}" placeholder="YYYY-MM-DD">
+      </div>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        {% set next_name_dir = 'desc' if sort == 'name' and direction == 'asc' else 'asc' %}
+        {% set next_birth_dir = 'desc' if sort == 'birth' and direction == 'asc' else 'asc' %}
+        {% set next_embassies_dir = 'desc' if sort == 'embassies' and direction == 'asc' else 'asc' %}
+        <th>
+          <a class="sort-link {% if sort == 'name' %}active{% endif %}" href="{{ url_for('persons_list', q=q, date_field=date_field, date_from=date_from, date_to=date_to, sort='name', direction=next_name_dir) }}">
+            Osoba
+            {% if sort == 'name' %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if direction == 'asc' else '↓' }}</span>{% endif %}
+          </a>
+        </th>
+        <th>
+          <a class="sort-link {% if sort == 'birth' %}active{% endif %}" href="{{ url_for('persons_list', q=q, date_field=date_field, date_from=date_from, date_to=date_to, sort='birth', direction=next_birth_dir) }}">
+            Data urodzenia
+            {% if sort == 'birth' %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if direction == 'asc' else '↓' }}</span>{% endif %}
+          </a>
+        </th>
+        <th>Urzędy / funkcje</th>
+        <th>
+          <a class="sort-link {% if sort == 'embassies' %}active{% endif %}" href="{{ url_for('persons_list', q=q, date_field=date_field, date_from=date_from, date_to=date_to, sort='embassies', direction=next_embassies_dir) }}">
+            Poselstwa
+            {% if sort == 'embassies' %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if direction == 'asc' else '↓' }}</span>{% endif %}
+          </a>
+        </th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.canonical_name }}</td>
+        <td>{{ prefixed_date_label(row.birth_kind, row.birth_label) if row.birth_label else '—' }}</td>
+        <td>{{ row.office_names or '—' }}</td>
+        <td>{{ row.embassy_count }}</td>
+        <td>
+          <div class="table-icon-actions">
+            <a class="icon-link" title="Otwórz kartę osoby" aria-label="Otwórz kartę osoby" href="{{ url_for('person_detail', person_id=row.id) }}">✎</a>
+            <form method="post" action="{{ url_for('person_delete', person_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć osobę: " ~ row.canonical_name ~ "? Powiązane rekordy również zostaną usunięte.")|tojson }});'>
+              <button type="submit" class="icon-link icon-button" title="Usuń osobę" aria-label="Usuń osobę">×</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">Brak wyników.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+  (function () {
+    const toggle = document.getElementById('person-date-filter-toggle');
+    const panel = document.getElementById('person-date-filter-panel');
+    if (!toggle || !panel) return;
+
+    const inputs = panel.querySelectorAll('input, select');
+
+    function resetPanel() {
+      inputs.forEach((field) => {
+        if (field.tagName === 'SELECT') {
+          field.selectedIndex = 0;
+        } else {
+          field.value = '';
+        }
+      });
+    }
+
+    toggle.addEventListener('click', () => {
+      const willHide = !panel.classList.contains('hidden');
+      panel.classList.toggle('hidden');
+      resetPanel();
+      if (willHide) {
+        panel.classList.add('hidden');
+      } else {
+        panel.classList.remove('hidden');
+      }
+    });
+  })();
+</script>
+{% endblock %}

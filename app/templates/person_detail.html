@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block title %}{{ person.canonical_name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="title-row">
+    <div>
+      <h2>{{ person.canonical_name }}</h2>
+    </div>
+    <div class="title-actions">
+      <a class="button secondary add-action icon-only-action" title="Edytuj osobę" aria-label="Edytuj osobę" href="{{ url_for('person_edit', person_id=person.id) }}">✎</a>
+    </div>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Data urodzenia</dt><dd>{{ prefixed_date_label(person.birth_kind, person.birth_label) if person.birth_label else '—' }}</dd></div>
+    <div><dt>Data śmierci</dt><dd>{{ prefixed_date_label(person.death_kind, person.death_label) if person.death_label else '—' }}</dd></div>
+    <div><dt>Wykształcenie</dt><dd>{{ person.education_note or '—' }}</dd></div>
+    <div><dt>Informacje dodatkowe</dt><dd>{{ person.general_biographical_note or person.research_note or '—' }}</dd></div>
+  </dl>
+</section>
+<section class="card">
+  <div class="tab-nav" role="tablist" aria-label="Sekcje karty osoby">
+    <button type="button" class="tab-button active" data-person-tab="relations" role="tab" aria-selected="true">Dane dodatkowe</button>
+    <button type="button" class="tab-button" data-person-tab="activity" role="tab" aria-selected="false">Działalność osoby</button>
+  </div>
+
+  <div class="person-tab-panel active" data-person-panel="relations">
+    <section class="two-col person-tab-section">
+  <article class="card">
+    <div class="section-head card-section-head">
+      <h3>Warianty nazwy</h3>
+      <a class="button secondary add-action icon-only-action" title="Dodaj wariant nazwy" aria-label="Dodaj wariant nazwy" href="{{ url_for('person_name_variant_create', person_id=person.id) }}">+</a>
+    </div>
+    <ul class="link-list">
+      {% for row in variants %}
+      <li>
+        <div class="entry-head">
+          <span>{{ row.variant_text }} <span class="muted">({{ row.language_code or 'brak języka' }})</span></span>
+          <div class="table-icon-actions">
+            <a class="icon-link" title="Edytuj wariant nazwy" aria-label="Edytuj wariant nazwy" href="{{ url_for('person_name_variant_edit', person_id=person.id, variant_id=row.id) }}">✎</a>
+            <form method="post" action="{{ url_for('person_name_variant_delete', person_id=person.id, variant_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć wariant nazwy: " ~ row.variant_text ~ "?")|tojson }});'>
+              <button type="submit" class="icon-link icon-button" title="Usuń wariant nazwy" aria-label="Usuń wariant nazwy">×</button>
+            </form>
+          </div>
+        </div>
+      </li>
+      {% else %}<li>Brak danych.</li>{% endfor %}
+    </ul>
+  </article>
+  <article class="card">
+    <div class="card-section-head">
+      <h3>Udział w poselstwach</h3>
+    </div>
+    <ul class="link-list">
+      {% for row in participations %}
+      <li>
+        <a href="{{ url_for('embassy_detail', embassy_id=row.embassy_id) }}">{{ row.embassy_title }}</a>
+        <div class="muted">{{ row.year_label or '—' }} · {{ row.role_in_embassy or 'bez roli' }} · {{ row.source_designation_latin or 'brak deskrypcji źródłowej' }}</div>
+      </li>
+      {% else %}<li>Brak danych.</li>{% endfor %}
+    </ul>
+  </article>
+    </section>
+    <section class="two-col person-tab-section">
+  <article class="card">
+    <div class="section-head card-section-head">
+      <h3>Urzędy i funkcje</h3>
+      <a class="button secondary add-action icon-only-action" title="Dodaj urząd lub funkcję" aria-label="Dodaj urząd lub funkcję" href="{{ url_for('office_term_create', person_id=person.id) }}">+</a>
+    </div>
+    {% for row in offices %}
+    <div class="entry-block">
+      <div class="entry-head">
+        <strong>{{ row.office_name }}</strong>
+        <div class="table-icon-actions">
+          <a class="icon-link" title="Edytuj urząd lub funkcję" aria-label="Edytuj urząd lub funkcję" href="{{ url_for('office_term_edit', person_id=person.id, office_id=row.id) }}">✎</a>
+          <form method="post" action="{{ url_for('office_term_delete', person_id=person.id, office_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć urząd lub funkcję: " ~ row.office_name ~ "?")|tojson }});'>
+            <button type="submit" class="icon-link icon-button" title="Usuń urząd lub funkcję" aria-label="Usuń urząd lub funkcję">×</button>
+          </form>
+        </div>
+      </div>
+      <div class="muted">{{ render_date(prefixed_date_label(row.start_kind, row.start_label) if row.start_label else None, prefixed_date_label(row.end_kind, row.end_label) if row.end_label else None) }}</div>
+      <div>{{ row.office_type or '—' }}</div>
+      <div class="muted">Deskrypcja źródłowa: {{ row.source_designation or '—' }}</div>
+      {% if row.comment %}<p>{{ row.comment }}</p>{% endif %}
+    </div>
+    {% else %}<p>Brak danych.</p>{% endfor %}
+  </article>
+  <article class="card">
+    <div class="section-head card-section-head">
+      <h3>Obecność przy Kurii</h3>
+      <a class="button secondary add-action icon-only-action" title="Dodaj obecność przy Kurii" aria-label="Dodaj obecność przy Kurii" href="{{ url_for('curia_presence_create', person_id=person.id) }}">+</a>
+    </div>
+    {% for row in presences %}
+    <div class="entry-block">
+      <div class="entry-head">
+        <strong>{{ row.place_name or 'miejsce nieustalone' }}</strong>
+        <div class="table-icon-actions">
+          <a class="icon-link" title="Edytuj obecność przy Kurii" aria-label="Edytuj obecność przy Kurii" href="{{ url_for('curia_presence_edit', person_id=person.id, presence_id=row.id) }}">✎</a>
+          <form method="post" action="{{ url_for('curia_presence_delete', person_id=person.id, presence_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć wpis o obecności przy Kurii?")|tojson }});'>
+            <button type="submit" class="icon-link icon-button" title="Usuń obecność przy Kurii" aria-label="Usuń obecność przy Kurii">×</button>
+          </form>
+        </div>
+      </div>
+      <div class="muted">{{ render_date(prefixed_date_label(row.start_kind, row.start_label) if row.start_label else None, prefixed_date_label(row.end_kind, row.end_label) if row.end_label else None) }}</div>
+      <div>{{ row.presence_type or '—' }} · {{ row.office_at_curia or '—' }}</div>
+      {% if row.scholarly_comment %}<p>{{ row.scholarly_comment }}</p>{% endif %}
+    </div>
+    {% else %}<p>Brak danych.</p>{% endfor %}
+  </article>
+    </section>
+    <section class="card person-tab-section">
+  <div class="section-head card-section-head">
+    <h3>Biogramy</h3>
+    <a class="button secondary add-action icon-only-action" title="Dodaj biogram" aria-label="Dodaj biogram" href="{{ url_for('biography_note_create', person_id=person.id) }}">+</a>
+  </div>
+  {% for row in bios %}
+  <div class="entry-block">
+    <div class="entry-head">
+      <div class="muted">{{ row.footnote_text or 'bez przypisu' }}</div>
+      <div class="table-icon-actions">
+        <a class="icon-link" title="Edytuj biogram" aria-label="Edytuj biogram" href="{{ url_for('biography_note_edit', person_id=person.id, bio_id=row.id) }}">✎</a>
+        <form method="post" action="{{ url_for('biography_note_delete', person_id=person.id, bio_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć ten biogram?")|tojson }});'>
+          <button type="submit" class="icon-link icon-button" title="Usuń biogram" aria-label="Usuń biogram">×</button>
+        </form>
+      </div>
+    </div>
+    <p>{{ row.biography_text }}</p>
+  </div>
+  {% else %}<p>Brak danych.</p>{% endfor %}
+</section>
+  </div>
+
+  <div class="person-tab-panel" data-person-panel="activity">
+    <section class="card person-tab-section">
+      <div class="section-head card-section-head">
+        <h3>Działalność osoby</h3>
+        <button type="button" class="button secondary add-action icon-only-action" title="Edytuj działalność osoby" aria-label="Edytuj działalność osoby" data-open-activity-modal>✎</button>
+      </div>
+      <div class="long-text-block">{{ person.activity_note or 'Brak opisu działalności.' }}</div>
+    </section>
+  </div>
+</section>
+
+<div class="modal-shell hidden" id="person-activity-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-activity-close></div>
+  <section class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="person-activity-title">
+    <div class="title-row">
+      <div>
+        <h2 id="person-activity-title">Działalność osoby</h2>
+        <p class="muted">Wprowadź opis działalności osoby.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('person_activity_update', person_id=person.id) }}">
+      <div class="field full">
+        <label for="activity_note">Treść</label>
+        <textarea class="large-textarea" id="activity_note" name="activity_note">{{ person.activity_note or '' }}</textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit">Zapisz</button>
+        <button type="button" class="button ghost" data-activity-close>Anuluj</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+  (function () {
+    const tabButtons = document.querySelectorAll('[data-person-tab]');
+    const tabPanels = document.querySelectorAll('[data-person-panel]');
+    const requestedTab = {{ ('activity' if request.args.get('tab') == 'activity' else 'relations') | tojson }};
+    const activityModal = document.getElementById('person-activity-modal');
+    const activityTextarea = document.getElementById('activity_note');
+
+    function activateTab(name) {
+      tabButtons.forEach((button) => {
+        const active = button.dataset.personTab === name;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      tabPanels.forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.personPanel === name);
+      });
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener('click', () => activateTab(button.dataset.personTab));
+    });
+    activateTab(requestedTab);
+
+    if (!activityModal || !activityTextarea) {
+      return;
+    }
+
+    function openActivityModal() {
+      activityModal.classList.remove('hidden');
+      activityModal.setAttribute('aria-hidden', 'false');
+      activityTextarea.focus();
+    }
+
+    function closeActivityModal() {
+      activityModal.classList.add('hidden');
+      activityModal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.querySelectorAll('[data-open-activity-modal]').forEach((button) => {
+      button.addEventListener('click', openActivityModal);
+    });
+    activityModal.querySelectorAll('[data-activity-close]').forEach((button) => {
+      button.addEventListener('click', closeActivityModal);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !activityModal.classList.contains('hidden')) {
+        closeActivityModal();
+      }
+    });
+  })();
+</script>
+{% endblock %}

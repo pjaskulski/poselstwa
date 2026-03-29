@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Wariant nazwy pozwala zapisać alternatywne formy występujące w źródłach i literaturze.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid">
+    <div class="field full">
+      <label for="variant_text">Wariant nazwy</label>
+      <input id="variant_text" type="text" name="variant_text" value="{{ form_data.variant_text }}" required>
+    </div>
+    <div class="field">
+      <label for="language_code">Język</label>
+      <select id="language_code" name="language_code">
+        {% for value, label in language_options %}
+        <option value="{{ value }}" {% if form_data.language_code == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label for="note">Nota</label>
+      <textarea id="note" name="note">{{ form_data.note }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('person_detail', person_id=person.id) }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

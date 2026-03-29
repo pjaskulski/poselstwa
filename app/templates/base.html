@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Poselstwa{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div>
+        <h1><a href="{{ url_for('index') }}">LegationesAdVaticanum</a></h1>
+        <p class="subtitle">Aplikacja do badań historii dyplomatycznej Polski i Stolicy Apostolskiej w XV wieku</p>
+      </div>
+      <nav>
+        {% set endpoint = request.endpoint or '' %}
+        <a href="{{ url_for('persons_list') }}" class="{% if endpoint == 'persons_list' or endpoint.startswith('person_') %}active{% endif %}">Osoby</a>
+        <a href="{{ url_for('embassies_list') }}" class="{% if endpoint == 'embassies_list' or endpoint.startswith('embassy_') or endpoint.startswith('source_') or endpoint.startswith('theme_annotation_') %}active{% endif %}">Poselstwa</a>
+        <a href="{{ url_for('themes_list') }}" class="{% if endpoint in ['themes_list', 'theme_detail'] %}active{% endif %}">Motywy</a>
+        <a href="{{ url_for('bibliography_list') }}" class="{% if endpoint == 'bibliography_list' or endpoint.startswith('bibliography_') %}active{% endif %}">Literatura</a>
+        <a href="{{ url_for('parameters_list') }}" class="{% if endpoint == 'parameters_list' or endpoint.startswith('parameter_') %}active{% endif %}">Parametry</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <section class="flash-stack">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  <div class="modal-shell hidden" id="quick-date-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="quick-date-title">
+      <div class="title-row">
+        <div>
+          <h2 id="quick-date-title">Data historyczna</h2>
+          <p class="muted">Utwórz datę. Po zapisaniu zostanie automatycznie podstawiona do wybranego pola.</p>
+        </div>
+      </div>
+      <form id="quick-date-form" class="form-grid">
+        <input type="hidden" name="entity_type">
+        <input type="hidden" name="record_id">
+        <input type="hidden" name="field_name">
+        <input type="hidden" name="date_id">
+        <div class="field">
+          <label for="quick-date-kind">Typ daty</label>
+          <select id="quick-date-kind" name="date_kind">
+            <option value="exact">exact</option>
+            <option value="circa">circa</option>
+            <option value="before">before</option>
+            <option value="after">after</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="quick-date-certainty">Pewność</label>
+          <select id="quick-date-certainty" name="certainty">
+            <option value="certain">certain</option>
+            <option value="probable">probable</option>
+            <option value="uncertain">uncertain</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="quick-date-label">Etykieta wyświetlana</label>
+          <input id="quick-date-label" type="text" name="display_label" required>
+        </div>
+        <input id="quick-date-start" type="hidden" name="start_date_iso">
+        <input id="quick-date-end" type="hidden" name="end_date_iso">
+        <div class="field full">
+          <label>Zakres daty do sortowania i filtrowania</label>
+          <div class="inline-copy-field">
+            <input id="quick-date-sort-start" type="text" name="sort_key_start" placeholder="YYYY-MM-DD">
+            <button type="button" class="button ghost icon-action" id="quick-date-copy-range" title="Skopiuj wartość od do pola do" aria-label="Skopiuj wartość od do pola do">→</button>
+            <input id="quick-date-sort-end" type="text" name="sort_key_end" placeholder="YYYY-MM-DD">
+          </div>
+        </div>
+        <div class="field full">
+          <label for="quick-date-comment">Komentarz</label>
+          <textarea id="quick-date-comment" name="comment"></textarea>
+        </div>
+        <div class="flash flash-error hidden" id="quick-date-errors"></div>
+        <div class="form-actions full">
+          <button type="submit" id="quick-date-submit">Ustaw</button>
+          <button type="button" class="button ghost hidden" id="quick-date-clear">Usuń z pola</button>
+          <button type="button" class="button ghost" data-modal-close>Anuluj</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <div class="modal-shell hidden" id="quick-bibliography-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-bibliography-modal-close></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="quick-bibliography-title">
+      <div class="title-row">
+        <div>
+          <h2 id="quick-bibliography-title">Nowe opracowanie</h2>
+          <p class="muted">Dodaj pozycję bibliograficzną. Po zapisaniu zostanie od razu wybrana na liście.</p>
+        </div>
+      </div>
+      <form id="quick-bibliography-form" class="form-grid">
+        <input type="hidden" name="target_select_id">
+        <div class="field">
+          <label for="quick-bibliography-item-type">Typ opracowania</label>
+          <select id="quick-bibliography-item-type" name="item_type">
+            <option value="book">książka</option>
+            <option value="article">artykuł</option>
+            <option value="edition">edycja źródłowa</option>
+            <option value="chapter">rozdział</option>
+            <option value="other">inne</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="quick-bibliography-short-citation">Skrót cytowania</label>
+          <input id="quick-bibliography-short-citation" type="text" name="short_citation" required>
+        </div>
+        <div class="field">
+          <label for="quick-bibliography-author">Autor</label>
+          <input id="quick-bibliography-author" type="text" name="author_text">
+        </div>
+        <div class="field">
+          <label for="quick-bibliography-editor">Redaktor</label>
+          <input id="quick-bibliography-editor" type="text" name="editor_text">
+        </div>
+        <div class="field full">
+          <label for="quick-bibliography-title-input">Tytuł</label>
+          <input id="quick-bibliography-title-input" type="text" name="title">
+        </div>
+        <div class="field">
+          <label for="quick-bibliography-place">Miejsce wydania</label>
+          <input id="quick-bibliography-place" type="text" name="publication_place">
+        </div>
+        <div class="field">
+          <label for="quick-bibliography-year">Rok wydania</label>
+          <input id="quick-bibliography-year" type="text" name="publication_year">
+        </div>
+        <div class="field full">
+          <label for="quick-bibliography-note">Nota</label>
+          <textarea id="quick-bibliography-note" name="note" rows="5"></textarea>
+        </div>
+        <div class="flash flash-error hidden" id="quick-bibliography-errors"></div>
+        <div class="form-actions full">
+          <button type="submit" id="quick-bibliography-submit">Dodaj i wybierz</button>
+          <button type="button" class="button ghost" data-bibliography-modal-close>Anuluj</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <script src="{{ url_for('static', filename='date_quick_create.js') }}"></script>
+  <script src="{{ url_for('static', filename='bibliography_quick_create.js') }}"></script>
+</body>
+</html>

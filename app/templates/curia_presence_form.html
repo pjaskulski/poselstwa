@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Wpis opisuje pobyt osoby przy Stolicy Apostolskiej jako odrębny kontekst badawczy.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="start_date_id">Data początkowa</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="start_date_id" type="hidden" name="start_date_id" value="{{ form_data.start_date_id }}">
+        <span id="start_date_id_label" class="date-pill">{{ date_label(form_data.start_date_id|int if form_data.start_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę początkową obecności" aria-label="Ustaw datę początkową obecności" data-entity-type="curia_presence" data-record-id="{{ request.view_args.presence_id if request.view_args.presence_id else 0 }}" data-field-name="start_date_id" data-target-input="start_date_id" data-target-label="start_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="end_date_id">Data końcowa</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="end_date_id" type="hidden" name="end_date_id" value="{{ form_data.end_date_id }}">
+        <span id="end_date_id_label" class="date-pill">{{ date_label(form_data.end_date_id|int if form_data.end_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę końcową obecności" aria-label="Ustaw datę końcową obecności" data-entity-type="curia_presence" data-record-id="{{ request.view_args.presence_id if request.view_args.presence_id else 0 }}" data-field-name="end_date_id" data-target-input="end_date_id" data-target-label="end_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="year_label">Etykieta roku</label>
+      <input id="year_label" type="text" name="year_label" value="{{ form_data.year_label }}">
+    </div>
+    <div class="field">
+      <label for="place_name">Miejsce</label>
+      <input id="place_name" type="text" name="place_name" value="{{ form_data.place_name }}">
+    </div>
+    <div class="field">
+      <label for="presence_type">Typ obecności</label>
+      <input id="presence_type" type="text" name="presence_type" value="{{ form_data.presence_type }}">
+    </div>
+    <div class="field">
+      <label for="mention_type">Typ wzmianki</label>
+      <input id="mention_type" type="text" name="mention_type" value="{{ form_data.mention_type }}">
+    </div>
+    <div class="field full">
+      <label for="office_at_curia">Urząd / rola przy Kurii</label>
+      <input id="office_at_curia" type="text" name="office_at_curia" value="{{ form_data.office_at_curia }}">
+    </div>
+    <div class="field">
+      <label for="reference_mention_id">Wzmianka źródłowa</label>
+      <select id="reference_mention_id" name="reference_mention_id">
+        <option value="">brak</option>
+        {% for item in reference_options %}
+        <option value="{{ item.id }}" {% if form_data.reference_mention_id == (item.id|string) %}selected{% endif %}>{{ item.archive_signature }} ({{ item.year_label }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label for="scholarly_comment">Komentarz badawczy</label>
+      <textarea id="scholarly_comment" name="scholarly_comment">{{ form_data.scholarly_comment }}</textarea>
+    </div>
+    <div class="field full">
+      <label for="working_comment">Komentarz roboczy</label>
+      <textarea id="working_comment" name="working_comment">{{ form_data.working_comment }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('person_detail', person_id=person.id) }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

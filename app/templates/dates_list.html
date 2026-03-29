@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Daty historyczne{% endblock %}
+{% block content %}
+<div class="toolbar card">
+  <form class="filters" method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="Szukaj etykiety, komentarza lub ISO">
+    <select name="date_kind">
+      <option value="">Wszystkie typy</option>
+      {% for item in date_kinds %}
+      <option value="{{ item }}" {% if date_kind == item %}selected{% endif %}>{{ item }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Filtruj</button>
+    {% if q or date_kind %}
+    <a class="button ghost" href="{{ url_for('dates_list') }}">Wyczyść</a>
+    {% endif %}
+    <a class="button" href="{{ url_for('historical_date_create') }}">Dodaj datę</a>
+  </form>
+</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Etykieta</th>
+        <th>Typ</th>
+        <th>Zakres ISO</th>
+        <th>Klucze sortowania</th>
+        <th>Pewność</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td><a href="{{ url_for('historical_date_edit', date_id=row.id) }}">{{ row.display_label }}</a></td>
+        <td>{{ row.date_kind }}</td>
+        <td>{{ render_date(row.start_date_iso, row.end_date_iso) }}</td>
+        <td>{{ render_date(row.sort_key_start, row.sort_key_end) }}</td>
+        <td>{{ row.certainty }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">Brak wyników.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

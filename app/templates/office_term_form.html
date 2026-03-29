@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Formularz opisuje urząd, godność lub funkcję pełnioną przez osobę w czasie, niezależnie od konkretnego poselstwa.</p>
+    </div>
+  </div>
+
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="office_name">Nazwa urzędu / godności</label>
+      <input id="office_name" type="text" name="office_name" value="{{ form_data.office_name }}" required>
+    </div>
+    <div class="field">
+      <label for="office_type">Typ</label>
+      <select id="office_type" name="office_type">
+        {% for value, label in office_type_options %}
+        <option value="{{ value }}" {% if form_data.office_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label for="source_designation">Deskrypcja źródłowa</label>
+      <input id="source_designation" type="text" name="source_designation" value="{{ form_data.source_designation }}">
+    </div>
+    <div class="field">
+      <label for="start_date_id">Data początkowa</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="start_date_id" type="hidden" name="start_date_id" value="{{ form_data.start_date_id }}">
+        <span id="start_date_id_label" class="date-pill">{{ date_label(form_data.start_date_id|int if form_data.start_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę początkową" aria-label="Ustaw datę początkową" data-entity-type="office_term" data-record-id="{{ request.view_args.office_id if request.view_args.office_id else 0 }}" data-field-name="start_date_id" data-target-input="start_date_id" data-target-label="start_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="end_date_id">Data końcowa</label>
+      <div class="inline-date-field date-field-widget">
+        <input id="end_date_id" type="hidden" name="end_date_id" value="{{ form_data.end_date_id }}">
+        <span id="end_date_id_label" class="date-pill">{{ date_label(form_data.end_date_id|int if form_data.end_date_id else None) }}</span>
+        <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę końcową" aria-label="Ustaw datę końcową" data-entity-type="office_term" data-record-id="{{ request.view_args.office_id if request.view_args.office_id else 0 }}" data-field-name="end_date_id" data-target-input="end_date_id" data-target-label="end_date_id_label">✎</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="bibliography_item_id">Bibliografia</label>
+      <select id="bibliography_item_id" name="bibliography_item_id">
+        <option value="">brak</option>
+        {% for item in bibliography_options %}
+        <option value="{{ item.id }}" {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}>{{ item.short_citation }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label for="note">Nota</label>
+      <textarea id="note" name="note">{{ form_data.note }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('person_detail', person_id=person.id) }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

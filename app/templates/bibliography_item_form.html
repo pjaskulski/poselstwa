@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Edycja pozycji bibliograficznej wykorzystywanej w opisach osób, poselstw, urzędów i źródeł.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="item_type">Typ opracowania</label>
+      <select id="item_type" name="item_type">
+        {% for value, label in item_type_options %}
+        <option value="{{ value }}" {% if form_data.item_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="short_citation">Skrót</label>
+      <input id="short_citation" type="text" name="short_citation" value="{{ form_data.short_citation }}" required>
+    </div>
+    <div class="field">
+      <label for="author_text">Autor</label>
+      <input id="author_text" type="text" name="author_text" value="{{ form_data.author_text }}">
+    </div>
+    <div class="field">
+      <label for="editor_text">Redaktor</label>
+      <input id="editor_text" type="text" name="editor_text" value="{{ form_data.editor_text }}">
+    </div>
+    <div class="field full">
+      <label for="title">Tytuł</label>
+      <input id="title" type="text" name="title" value="{{ form_data.title }}">
+    </div>
+    <div class="field">
+      <label for="publication_place">Miejsce wydania</label>
+      <input id="publication_place" type="text" name="publication_place" value="{{ form_data.publication_place }}">
+    </div>
+    <div class="field">
+      <label for="volume_text">Tom / wolumin</label>
+      <input id="volume_text" type="text" name="volume_text" value="{{ form_data.volume_text }}">
+    </div>
+    <div class="field">
+      <label for="series_text">Seria</label>
+      <input id="series_text" type="text" name="series_text" value="{{ form_data.series_text }}">
+    </div>
+    <div class="field">
+      <label for="publication_year">Rok wydania</label>
+      <input id="publication_year" type="text" name="publication_year" value="{{ form_data.publication_year }}">
+    </div>
+    <div class="field">
+      <label for="access_text">Dostęp</label>
+      <input id="access_text" type="text" name="access_text" value="{{ form_data.access_text }}">
+    </div>
+    <div class="field full">
+      <label for="note">Nota</label>
+      <textarea id="note" name="note" rows="6">{{ form_data.note }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('bibliography_list') }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}O prototypie{% endblock %}
+{% block content %}
+<section class="card prose">
+  <h2>Założenia prototypu</h2>
+  <p>Prototyp realizuje minimalny rdzeń wskazany w dokumentach projektowych: moduły „Osoby”, „Poselstwa”, „Źródła” i „Motywy”, prosty interfejs oparty na Flasku i SQLite oraz model rozdzielający byt osoby od jej manifestacji kontekstowych w ramach konkretnego poselstwa.</p>
+  <p>W warstwie danych wykorzystano dostarczony schemat SQL. Interfejs pokazuje także sposób obsługi dat historycznych przez tabelę pomocniczą oraz powiązania między osobą, urzędem, uczestnictwem w poselstwie, tekstem źródłowym i motywem analitycznym.</p>
+  <h3>Co obejmuje ta wersja</h3>
+  <ul>
+    <li>listy osób i poselstw z filtrowaniem oraz eksportem CSV,</li>
+    <li>formularze edycji rekordów głównych, dat historycznych i najważniejszych relacji badawczych,</li>
+    <li>kartę osoby z biogramami, urzędami, obecnością przy Kurii i udziałem w poselstwach,</li>
+    <li>kartę poselstwa z metadanymi, uczestnikami, literaturą i źródłami,</li>
+    <li>widok źródła z równoległymi segmentami oryginału i przekładu,</li>
+    <li>kartę motywu z listą oznaczonych fragmentów.</li>
+  </ul>
+  <h3>Świadome uproszczenia</h3>
+  <ul>
+    <li>prototyp jest głównie demonstratorem interfejsu i relacji danych,</li>
+    <li>nie zawiera jeszcze logowania, synchronizacji, automatycznych kopii bezpieczeństwa ani pełnego workflow redakcyjnego,</li>
+    <li>adnotacje motywów są tu prezentowane, ale nie są jeszcze tworzone interaktywnie z poziomu przeglądarki.</li>
+  </ul>
+</section>
+{% endblock %}

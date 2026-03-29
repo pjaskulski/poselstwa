@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Literatura{% endblock %}
+{% block content %}
+<section class="card toolbar">
+  <div class="section-head">
+    <div>
+      <h2>Literatura</h2>
+      <p class="muted">Lista opracowań i pozycji bibliograficznych wykorzystywanych w aplikacji.</p>
+    </div>
+    <a class="button secondary text-action" href="{{ url_for('bibliography_item_create') }}">Dodaj pozycję</a>
+  </div>
+  <form method="get" class="filters">
+    <input class="filter-search-wide" type="search" name="q" value="{{ q }}" placeholder="Filtruj po skrócie cytowania, autorze, tytule, roku...">
+    <button type="submit">Filtruj</button>
+    {% if q %}
+    <a class="button ghost" href="{{ url_for('bibliography_list') }}">Wyczyść</a>
+    {% endif %}
+  </form>
+</section>
+<section class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Skrót</th>
+        <th>Autor / redaktor</th>
+        <th>Tytuł</th>
+        <th>Rok</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.short_citation }}</td>
+        <td>{{ row.author_text or row.editor_text or '—' }}</td>
+        <td>{{ row.title or row.note or '—' }}</td>
+        <td>{{ row.publication_year or '—' }}</td>
+        <td>
+          <div class="table-icon-actions">
+            <a class="icon-link" title="Edytuj pozycję bibliograficzną" aria-label="Edytuj pozycję bibliograficzną" href="{{ url_for('bibliography_item_edit', item_id=row.id) }}">✎</a>
+            <form method="post" action="{{ url_for('bibliography_item_delete', item_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć pozycję bibliograficzną: " ~ row.short_citation ~ "?")|tojson }});'>
+              <button type="submit" class="icon-link icon-button" title="Usuń pozycję bibliograficzną" aria-label="Usuń pozycję bibliograficzną">×</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">Brak pozycji bibliograficznych.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

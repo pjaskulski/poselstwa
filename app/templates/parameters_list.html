@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Parametry{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="title-row">
+    <div>
+      <h2>Parametry</h2>
+      <p class="muted">Słowniki i wartości wykorzystywane w formularzach aplikacji.</p>
+    </div>
+  </div>
+</section>
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h3>Typy źródeł</h3>
+    </div>
+    <a class="button secondary add-action icon-only-action" title="Dodaj typ źródła" aria-label="Dodaj typ źródła" href="{{ url_for('parameter_source_type_create') }}">+</a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Nazwa</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.label or row.value }}</td>
+        <td>
+          <div class="table-icon-actions">
+            <a class="icon-link" title="Edytuj typ źródła" aria-label="Edytuj typ źródła" href="{{ url_for('parameter_source_type_edit', type_id=row.id) }}">✎</a>
+            <form method="post" action="{{ url_for('parameter_source_type_delete', type_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć typ źródła: " ~ (row.label or row.value) ~ "?")|tojson }});'>
+              <button type="submit" class="icon-link icon-button" title="Usuń typ źródła" aria-label="Usuń typ źródła">×</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2">Brak typów źródeł.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Strona główna – Poselstwa{% endblock %}
+{% block content %}
+<section class="stats-grid">
+  <article class="stat card"><strong>{{ stats.persons }}</strong><span>osoby</span></article>
+  <article class="stat card"><strong>{{ stats.embassies }}</strong><span>poselstwa</span></article>
+  <article class="stat card"><strong>{{ stats.themes }}</strong><span>motywy</span></article>
+  <article class="stat card"><strong>{{ stats.sources }}</strong><span>teksty źródłowe</span></article>
+</section>
+<section class="stats-grid">
+  <article class="card">
+    <h3>Najnowsze osoby</h3>
+    <ul class="link-list">
+      {% for row in recent_people %}
+      <li><a href="{{ url_for('person_detail', person_id=row.id) }}">{{ row.canonical_name }}</a>{% if row.display_name and row.display_name != row.canonical_name %} — {{ row.display_name }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </article>
+  <article class="card">
+    <h3>Ostatnio przeglądane poselstwa</h3>
+    <ul class="link-list">
+      {% for row in recent_embassies %}
+      <li><a href="{{ url_for('embassy_detail', embassy_id=row.id) }}">{{ row.title or 'Bez tytułu' }}</a> <span class="muted">({{ row.year_label or 'brak roku' }})</span></li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+{% endblock %}

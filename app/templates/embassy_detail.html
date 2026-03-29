@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}{{ embassy.title }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="title-row">
+    <div>
+      <h2>{{ embassy.title }}</h2>
+      <p class="muted">Rok: {{ embassy.year_label or '—' }}</p>
+    </div>
+    <div class="title-actions">
+      <a class="button secondary add-action icon-only-action" title="Edytuj poselstwo" aria-label="Edytuj poselstwo" href="{{ url_for('embassy_edit', embassy_id=embassy.id) }}">✎</a>
+    </div>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Data mianowania</dt><dd>{{ prefixed_date_label(embassy.appointment_kind, embassy.appointment_label) if embassy.appointment_label else '—' }}</dd></div>
+    <div><dt>Dotarcie do Rzymu</dt><dd>{{ prefixed_date_label(embassy.arrival_kind, embassy.arrival_label) if embassy.arrival_label else '—' }}</dd></div>
+    <div><dt>Audiencja</dt><dd>{{ prefixed_date_label(embassy.audience_kind, embassy.audience_label) if embassy.audience_label else '—' }}</dd></div>
+    <div><dt>Wyjazd z Rzymu</dt><dd>{{ prefixed_date_label(embassy.departure_kind, embassy.departure_label) if embassy.departure_label else '—' }}</dd></div>
+    <div><dt>Powrót do Polski</dt><dd>{{ prefixed_date_label(embassy.return_kind, embassy.return_label) if embassy.return_label else '—' }}</dd></div>
+    <div><dt>Przedmiot misji</dt><dd>{{ embassy.mission_subject or '—' }}</dd></div>
+  </dl>
+  <dl class="meta-grid">
+    <div class="full-width-meta">
+      <dt>Opis</dt>
+      <dd>{{ embassy.description_text or 'Brak opisu.' }}</dd>
+    </div>
+  </dl>
+</section>
+<section class="two-col">
+  <article class="card">
+    <div class="section-head card-section-head">
+      <h3>Posłowie i uczestnicy</h3>
+      <a class="button secondary add-action icon-only-action" title="Dodaj uczestnika poselstwa" aria-label="Dodaj uczestnika poselstwa" href="{{ url_for('embassy_participant_create', embassy_id=embassy.id) }}">+</a>
+    </div>
+    {% for row in participants %}
+    <div class="entry-block">
+      <div class="entry-head">
+        <strong><a href="{{ url_for('person_detail', person_id=row.person_id) }}">{{ row.canonical_name }}</a></strong>
+        <div class="table-icon-actions">
+          <a class="icon-link" title="Edytuj uczestnika poselstwa" aria-label="Edytuj uczestnika poselstwa" href="{{ url_for('embassy_participant_edit', embassy_id=embassy.id, participant_id=row.id) }}">✎</a>
+          <form method="post" action="{{ url_for('embassy_participant_delete', embassy_id=embassy.id, participant_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć uczestnika poselstwa: " ~ row.canonical_name ~ "?")|tojson }});'>
+            <button type="submit" class="icon-link icon-button" title="Usuń uczestnika poselstwa" aria-label="Usuń uczestnika poselstwa">×</button>
+          </form>
+        </div>
+      </div>
+      <div>{{ row.role_in_embassy or '—' }} · {{ row.office_during_embassy or '—' }}</div>
+      <div class="muted">W źródle: {{ row.source_designation_latin or '—' }}{% if row.source_designation_polish %} / {{ row.source_designation_polish }}{% endif %}</div>
+      {% if row.representation_note or row.comment %}<p>{{ row.representation_note or row.comment }}</p>{% endif %}
+    </div>
+    {% else %}<p>Brak danych.</p>{% endfor %}
+  </article>
+  <article class="card">
+    <div class="section-head card-section-head">
+      <h3>Literatura</h3>
+      <a class="button secondary add-action icon-only-action" title="Dodaj pozycję literatury" aria-label="Dodaj pozycję literatury" href="{{ url_for('embassy_bibliography_create', embassy_id=embassy.id) }}">+</a>
+    </div>
+    {% for row in bibliography %}
+    <div class="entry-block">
+      <div class="entry-head">
+        <strong>{{ row.short_citation }}</strong>
+        <div class="table-icon-actions">
+          <a class="icon-link" title="Edytuj pozycję literatury" aria-label="Edytuj pozycję literatury" href="{{ url_for('embassy_bibliography_edit', embassy_id=embassy.id, entry_id=row.id) }}">✎</a>
+          <form method="post" action="{{ url_for('embassy_bibliography_delete', embassy_id=embassy.id, entry_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć pozycję literatury: " ~ row.short_citation ~ "?")|tojson }});'>
+            <button type="submit" class="icon-link icon-button" title="Usuń pozycję literatury" aria-label="Usuń pozycję literatury">×</button>
+          </form>
+        </div>
+      </div>
+      <div>{{ row.title or row.note or '—' }}</div>
+      {% if row.comment %}<div class="muted">{{ row.comment }}</div>{% endif %}
+    </div>
+    {% else %}<p>Brak danych.</p>{% endfor %}
+  </article>
+</section>
+<section class="card">
+  <div class="section-head card-section-head">
+    <h3>Źródła</h3>
+    <a class="button secondary add-action icon-only-action" title="Dodaj źródło" aria-label="Dodaj źródło" href="{{ url_for('source_text_create', embassy_id=embassy.id) }}">+</a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Typ</th>
+        <th>Edycja</th>
+        <th>Sygnatura</th>
+        <th>Motywy</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in sources %}
+      <tr>
+        <td>{{ row.source_type }}</td>
+        <td>{{ row.edition_label or '—' }}</td>
+        <td>{{ row.archive_signature or '—' }}</td>
+        <td>{{ row.annotation_count }}</td>
+        <td>
+          <div class="table-icon-actions">
+            <a class="icon-link" title="Otwórz kartę źródła" aria-label="Otwórz kartę źródła" href="{{ url_for('source_detail', source_id=row.id) }}">✎</a>
+            <form method="post" action="{{ url_for('source_text_delete', source_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć źródło: " ~ (row.edition_label or row.source_type) ~ "?")|tojson }});'>
+              <button type="submit" class="icon-link icon-button" title="Usuń źródło" aria-label="Usuń źródło">×</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="5">Brak źródeł.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

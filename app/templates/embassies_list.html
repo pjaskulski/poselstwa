@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Poselstwa{% endblock %}
+{% block content %}
+<div class="toolbar card">
+  <form class="filters" method="get">
+    <div class="filter-search-stack">
+      <input class="filter-search-wide" type="search" name="q" value="{{ q }}" placeholder="Szukaj tytułu, tematu misji, opisu">
+      <button type="button" class="filter-toggle" id="date-filter-toggle">Filtrowanie dat</button>
+    </div>
+    <button type="submit">Filtruj</button>
+    {% if q or audience_from or audience_to %}
+    <a class="button ghost" href="{{ url_for('embassies_list') }}">Wyczyść</a>
+    {% endif %}
+    <a class="button secondary" href="{{ url_for('embassies_export') }}">Eksport CSV</a>
+    <a class="button" href="{{ url_for('embassy_create') }}">Dodaj poselstwo</a>
+    <div class="date-filter-panel {% if not (audience_from or audience_to) %}hidden{% endif %}" id="date-filter-panel">
+      <div class="field">
+        <label for="date_field">Data</label>
+        <select id="date_field" name="date_field">
+          <option value="audience" {% if date_field == 'audience' %}selected{% endif %}>data audiencji</option>
+          <option value="appointment" {% if date_field == 'appointment' %}selected{% endif %}>data mianowania</option>
+          <option value="arrival" {% if date_field == 'arrival' %}selected{% endif %}>data dotarcia do Rzymu</option>
+          <option value="departure" {% if date_field == 'departure' %}selected{% endif %}>data wyjazdu z Rzymu</option>
+          <option value="return" {% if date_field == 'return' %}selected{% endif %}>data powrotu do Polski</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="audience_from">Zakres od</label>
+        <input id="audience_from" type="text" name="audience_from" value="{{ audience_from }}" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="field">
+        <label for="audience_to">Zakres do</label>
+        <input id="audience_to" type="text" name="audience_to" value="{{ audience_to }}" placeholder="YYYY-MM-DD">
+      </div>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        {% set next_title_dir = 'desc' if sort == 'title' and direction == 'asc' else 'asc' %}
+        {% set next_year_dir = 'desc' if sort == 'year' and direction == 'asc' else 'asc' %}
+        {% set next_subject_dir = 'desc' if sort == 'subject' and direction == 'asc' else 'asc' %}
+        <th>
+          <a class="sort-link {% if sort == 'title' %}active{% endif %}" href="{{ url_for('embassies_list', q=q, date_field=date_field, audience_from=audience_from, audience_to=audience_to, sort='title', direction=next_title_dir) }}">
+            Poselstwo
+            {% if sort == 'title' %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if direction == 'asc' else '↓' }}</span>{% endif %}
+          </a>
+        </th>
+        <th>
+          <a class="sort-link {% if sort == 'year' %}active{% endif %}" href="{{ url_for('embassies_list', q=q, date_field=date_field, audience_from=audience_from, audience_to=audience_to, sort='year', direction=next_year_dir) }}">
+            Rok
+            {% if sort == 'year' %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if direction == 'asc' else '↓' }}</span>{% endif %}
+          </a>
+        </th>
+        <th>
+          <a class="sort-link {% if sort == 'subject' %}active{% endif %}" href="{{ url_for('embassies_list', q=q, date_field=date_field, audience_from=audience_from, audience_to=audience_to, sort='subject', direction=next_subject_dir) }}">
+            Przedmiot misji
+            {% if sort == 'subject' %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if direction == 'asc' else '↓' }}</span>{% endif %}
+          </a>
+        </th>
+        <th>Data audiencji</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.title or 'Bez tytułu' }}</td>
+        <td>{{ row.year_label or '—' }}</td>
+        <td>{{ row.mission_subject or '—' }}</td>
+        <td>{{ prefixed_date_label(row.audience_kind, row.audience_label) if row.audience_label else '—' }}</td>
+        <td>
+          <div class="table-icon-actions">
+            <a class="icon-link" title="Otwórz kartę poselstwa" aria-label="Otwórz kartę poselstwa" href="{{ url_for('embassy_detail', embassy_id=row.id) }}">✎</a>
+            <form method="post" action="{{ url_for('embassy_delete', embassy_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć poselstwo: " ~ (row.title or "bez tytułu") ~ "? Powiązane rekordy również zostaną usunięte.")|tojson }});'>
+              <button type="submit" class="icon-link icon-button" title="Usuń poselstwo" aria-label="Usuń poselstwo">×</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="5">Brak wyników.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+  (function () {
+    const toggle = document.getElementById('date-filter-toggle');
+    const panel = document.getElementById('date-filter-panel');
+    if (!toggle || !panel) return;
+
+    const inputs = panel.querySelectorAll('input, select');
+
+    function resetPanel() {
+      inputs.forEach((field) => {
+        if (field.tagName === 'SELECT') {
+          field.selectedIndex = 0;
+        } else {
+          field.value = '';
+        }
+      });
+    }
+
+    toggle.addEventListener('click', () => {
+      const willHide = !panel.classList.contains('hidden');
+      panel.classList.toggle('hidden');
+      resetPanel();
+      if (willHide) {
+        panel.classList.add('hidden');
+      } else {
+        panel.classList.remove('hidden');
+      }
+    });
+  })();
+</script>
+{% endblock %}

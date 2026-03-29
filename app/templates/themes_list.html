@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Motywy{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="section-head">
+    <h2>Słownik motywów</h2>
+    <a class="button secondary add-action icon-only-action" title="Dodaj motyw" aria-label="Dodaj motyw" href="{{ url_for('theme_create') }}">+</a>
+  </div>
+  <div class="theme-list theme-list-admin">
+    {% for row in rows %}
+    <article class="theme-card theme-card-admin" style="border-left-color: {{ row.color_code or '#666' }}">
+      <div class="theme-card-actions table-icon-actions">
+        <a class="icon-link" title="Edytuj motyw" aria-label="Edytuj motyw" href="{{ url_for('theme_edit', theme_id=row.id, return_to='list') }}">✎</a>
+        <form method="post" action="{{ url_for('theme_delete', theme_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć motyw: " ~ row.name ~ "?")|tojson }});'>
+          <button type="submit" class="icon-link icon-button" title="Usuń motyw" aria-label="Usuń motyw">×</button>
+        </form>
+      </div>
+      <div>
+        <strong><a href="{{ url_for('theme_detail', theme_id=row.id) }}">{{ row.name }}</a></strong>
+        <span>{{ row.annotation_count }} oznaczeń</span>
+        {% if row.description_text %}<small>{{ row.description_text }}</small>{% endif %}
+      </div>
+    </article>
+    {% else %}
+    <p>Brak motywów.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

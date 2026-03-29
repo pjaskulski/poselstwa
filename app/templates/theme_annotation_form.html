@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Motyw przypisywany jest do zaznaczonego fragmentu w obrębie wybranego akapitu i języka.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid">
+    <input type="hidden" name="text_language_code" value="{{ form_data.text_language_code }}">
+    <input type="hidden" name="annotated_text_snapshot" value="{{ form_data.annotated_text_snapshot }}">
+    <input type="hidden" name="char_start" value="{{ form_data.char_start }}">
+    <input type="hidden" name="char_end" value="{{ form_data.char_end }}">
+    <div class="field">
+      <label for="theme_id">Motyw</label>
+      <select id="theme_id" name="theme_id" required>
+        <option value="">wybierz</option>
+        {% for item in theme_options %}
+        <option value="{{ item.id }}" {% if form_data.theme_id == item.id|string %}selected{% endif %}>{{ item.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label>Wybrany fragment</label>
+      <div class="long-text-block long-text-card source-text-block">{{ form_data.annotated_text_snapshot or '—' }}</div>
+    </div>
+    <div class="field full">
+      <label for="comment">Nota</label>
+      <textarea id="comment" name="comment">{{ form_data.comment }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('source_detail', source_id=source.id) }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

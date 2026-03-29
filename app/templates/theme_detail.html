@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Motyw – {{ theme.name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="title-row">
+    <div>
+      <h2>{{ theme.name }}</h2>
+      <p>{{ theme.description_text or 'Brak opisu.' }}</p>
+    </div>
+    <div class="table-icon-actions">
+      <a class="icon-link" title="Edytuj motyw" aria-label="Edytuj motyw" href="{{ url_for('theme_edit', theme_id=theme.id, return_to='detail') }}">✎</a>
+      <form method="post" action="{{ url_for('theme_delete', theme_id=theme.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć motyw: " ~ theme.name ~ "?")|tojson }});'>
+        <button type="submit" class="icon-link icon-button" title="Usuń motyw" aria-label="Usuń motyw">×</button>
+      </form>
+    </div>
+  </div>
+</section>
+<section>
+  {% for row in annotations %}
+  <article class="card annotation-item">
+    <div class="annotation-item-head">
+      <div class="annotation-meta">
+        <div><strong>Poselstwo</strong><br><a href="{{ url_for('embassy_detail', embassy_id=row.embassy_id) }}">{{ row.embassy_title }}</a> <span class="muted">({{ row.year_label or '—' }})</span></div>
+        <div><strong>Edycja</strong><br>{{ row.edition_label or '—' }}</div>
+        <div><strong>Sygnatura</strong><br>{{ row.archive_signature or '—' }}</div>
+        <div><strong>Fragment</strong><br>{% if row.segment_no %}Akapit {{ row.segment_no }}{% else %}Poziom całego tekstu{% endif %}</div>
+      </div>
+      {% if row.source_segment_id %}
+      <div class="table-icon-actions">
+        <button
+          type="button"
+          class="icon-link icon-button"
+          title="Pokaż akapit"
+          aria-label="Pokaż akapit"
+          data-open-theme-preview="preview-{{ row.id }}"
+        >↗</button>
+      </div>
+      {% endif %}
+    </div>
+    <blockquote>{{ row.annotated_text_snapshot }}</blockquote>
+    {% if row.source_segment_id %}
+    <div class="hidden" id="preview-{{ row.id }}">
+      <div class="section-head">
+        <div>
+          <h3>{{ row.edition_label or 'Źródło' }}</h3>
+          <p class="muted">{{ row.archive_signature or 'Brak sygnatury' }} · {% if row.segment_no %}Akapit {{ row.segment_no }}{% else %}Poziom całego tekstu{% endif %}</p>
+        </div>
+      </div>
+      <article class="aligned-paragraph-row">
+        <section class="paragraph-panel">
+          <div class="segment-head">Tekst oryginalny</div>
+          <div class="long-text-block source-text-block">{{ render_segment_with_annotations(row.original_segment, segment_annotation_map.get(row.source_segment_id, {}).get('la', [])) }}</div>
+        </section>
+        <section class="paragraph-panel">
+          <div class="segment-head">Tekst polski</div>
+          <div class="long-text-block source-text-block">{{ render_segment_with_annotations(row.polish_segment, segment_annotation_map.get(row.source_segment_id, {}).get('pl', [])) }}</div>
+        </section>
+      </article>
+    </div>
+    {% endif %}
+  </article>
+  {% else %}
+  <article class="card"><p>Brak oznaczeń dla tego motywu.</p></article>
+  {% endfor %}
+</section>
+<div class="modal-shell hidden" id="theme-preview-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-theme-preview-close></div>
+  <section class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="theme-preview-title">
+    <div class="title-row">
+      <div>
+        <h2 id="theme-preview-title">Podgląd akapitu</h2>
+        <p class="muted">Widok akapitu źródła z podświetleniami motywów.</p>
+      </div>
+    </div>
+    <div id="theme-preview-content"></div>
+    <div class="form-actions">
+      <button type="button" class="button ghost" data-theme-preview-close>Zamknij</button>
+    </div>
+  </section>
+</div>
+<script>
+  (function () {
+    const modal = document.getElementById('theme-preview-modal');
+    const content = document.getElementById('theme-preview-content');
+    if (!modal || !content) return;
+
+    function openPreview(sourceId) {
+      const source = document.getElementById(sourceId);
+      if (!source) return;
+      content.innerHTML = source.innerHTML;
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePreview() {
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+      content.innerHTML = '';
+    }
+
+    document.querySelectorAll('[data-open-theme-preview]').forEach((button) => {
+      button.addEventListener('click', () => openPreview(button.dataset.openThemePreview));
+    });
+    modal.querySelectorAll('[data-theme-preview-close]').forEach((button) => {
+      button.addEventListener('click', closePreview);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+        closePreview();
+      }
+    });
+  })();
+</script>
+{% endblock %}

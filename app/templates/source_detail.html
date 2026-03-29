@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Źródło – {{ source.edition_label }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="title-row">
+    <div>
+      <h2>{{ source.edition_label or 'Tekst źródłowy' }}</h2>
+      <p><a href="{{ url_for('embassy_detail', embassy_id=source.embassy_id) }}">{{ source.embassy_title }}</a> <span class="muted">({{ source.year_label or '—' }})</span></p>
+    </div>
+    <div class="title-actions">
+      <div class="table-icon-actions">
+        <a class="button secondary add-action icon-only-action" title="Wróć do karty poselstwa" aria-label="Wróć do karty poselstwa" href="{{ url_for('embassy_detail', embassy_id=source.embassy_id) }}">↩</a>
+        <a class="button secondary add-action icon-only-action" title="Edytuj źródło" aria-label="Edytuj źródło" href="{{ url_for('source_text_edit', source_id=source.id) }}">✎</a>
+        <form method="post" action="{{ url_for('source_text_delete', source_id=source.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć źródło: " ~ (source.edition_label or source.source_type) ~ "?")|tojson }});'>
+          <button type="submit" class="icon-link icon-button" title="Usuń źródło" aria-label="Usuń źródło">×</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Typ źródła</dt><dd>{{ source.source_type }}</dd></div>
+    <div><dt>Sygnatura org.</dt><dd>{{ source.archive_signature or '—' }}</dd></div>
+    <div><dt>Edycja</dt><dd>{{ source.edition_label or '—' }}</dd></div>
+    <div><dt>Nota</dt><dd>{{ source.editorial_note or '—' }}</dd></div>
+  </dl>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h3>Tekst źródła</h3>
+      <p class="muted">Zaznacz w akapicie konkretny fragment tekstu, a potem przypisz do niego motyw. Podświetlenie pojawi się tylko na wybranym zakresie.</p>
+    </div>
+  </div>
+
+  {% if segments %}
+  <div class="aligned-paragraph-list">
+    {% for row in segments %}
+    <article class="aligned-paragraph-row">
+      <section class="paragraph-panel">
+        <div class="entry-head">
+          <div class="segment-head">Akapit {{ row.segment_no }} · tekst oryginalny</div>
+        </div>
+        <div
+          class="long-text-block source-text-block annotatable-text"
+          data-source-id="{{ source.id }}"
+          data-segment-id="{{ row.id }}"
+          data-language="la"
+        >{{ render_segment_with_annotations(row.original_segment, ann_by_segment.get(row.id, {}).get('la', [])) }}</div>
+        <div class="selection-actions hidden">
+          <a class="button secondary text-action selection-annotate-link" href="#">Oznacz zaznaczony fragment</a>
+          <button type="button" class="button ghost text-action selection-clear-button">Wyczyść zaznaczenie</button>
+        </div>
+        {% for ann in ann_by_segment.get(row.id, {}).get('la', []) %}
+        <div class="annotation-chip" style="border-left-color: {{ ann.color_code or '#444' }}">
+          <div class="annotation-chip-head">
+            <strong>{{ ann.theme_name }}</strong>
+            <div class="table-icon-actions">
+              <a class="icon-link" title="Edytuj oznaczenie motywu" aria-label="Edytuj oznaczenie motywu" href="{{ url_for('theme_annotation_edit', source_id=source.id, annotation_id=ann.id) }}">✎</a>
+              <form method="post" action="{{ url_for('theme_annotation_delete', source_id=source.id, annotation_id=ann.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć oznaczenie motywu „" ~ ann.theme_name ~ "” z akapitu " ~ row.segment_no ~ "?")|tojson }});'>
+                <button type="submit" class="icon-link icon-button" title="Usuń oznaczenie motywu" aria-label="Usuń oznaczenie motywu">×</button>
+              </form>
+            </div>
+          </div>
+          <div class="annotation-fragment">{{ ann.annotated_text_snapshot }}</div>
+          {% if ann.comment %}
+          <div>{{ ann.comment }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </section>
+
+      <section class="paragraph-panel">
+        <div class="entry-head">
+          <div class="segment-head">Akapit {{ row.segment_no }} · tekst polski</div>
+        </div>
+        <div
+          class="long-text-block source-text-block annotatable-text"
+          data-source-id="{{ source.id }}"
+          data-segment-id="{{ row.id }}"
+          data-language="pl"
+        >{{ render_segment_with_annotations(row.polish_segment, ann_by_segment.get(row.id, {}).get('pl', [])) }}</div>
+        <div class="selection-actions hidden">
+          <a class="button secondary text-action selection-annotate-link" href="#">Oznacz zaznaczony fragment</a>
+          <button type="button" class="button ghost text-action selection-clear-button">Wyczyść zaznaczenie</button>
+        </div>
+        {% for ann in ann_by_segment.get(row.id, {}).get('pl', []) %}
+        <div class="annotation-chip" style="border-left-color: {{ ann.color_code or '#444' }}">
+          <div class="annotation-chip-head">
+            <strong>{{ ann.theme_name }}</strong>
+            <div class="table-icon-actions">
+              <a class="icon-link" title="Edytuj oznaczenie motywu" aria-label="Edytuj oznaczenie motywu" href="{{ url_for('theme_annotation_edit', source_id=source.id, annotation_id=ann.id) }}">✎</a>
+              <form method="post" action="{{ url_for('theme_annotation_delete', source_id=source.id, annotation_id=ann.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć oznaczenie motywu „" ~ ann.theme_name ~ "” z akapitu " ~ row.segment_no ~ "?")|tojson }});'>
+                <button type="submit" class="icon-link icon-button" title="Usuń oznaczenie motywu" aria-label="Usuń oznaczenie motywu">×</button>
+              </form>
+            </div>
+          </div>
+          <div class="annotation-fragment">{{ ann.annotated_text_snapshot }}</div>
+          {% if ann.comment %}
+          <div>{{ ann.comment }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </section>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">Brak akapitów do wyświetlenia. Po zapisaniu tekstu z podziałem na puste wiersze akapity pojawią się tutaj automatycznie.</p>
+  {% endif %}
+
+  {% if ann_global %}
+  <div class="entry-block">
+    <h4>Oznaczenia ogólne</h4>
+    {% for ann in ann_global %}
+    <div class="annotation-chip" style="border-left-color: {{ ann.color_code or '#444' }}">
+      <strong>{{ ann.theme_name }}</strong>: {{ ann.annotated_text_snapshot }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+<script src="{{ url_for('static', filename='source_annotations.js') }}"></script>
+{% endblock %}

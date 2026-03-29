@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Segment zwykle odpowiada akapitowi i pozwala utrzymać równoległy układ oryginału oraz przekładu.</p>
+    </div>
+    <a class="button ghost" href="{{ url_for('source_detail', source_id=source.id) }}">Wróć do źródła</a>
+  </div>
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="segment_no">Numer segmentu</label>
+      <input id="segment_no" type="text" name="segment_no" value="{{ form_data.segment_no }}" required>
+    </div>
+    <div class="field">
+      <label for="alignment_group">Grupa wyrównania</label>
+      <input id="alignment_group" type="text" name="alignment_group" value="{{ form_data.alignment_group }}">
+    </div>
+    <div class="field full">
+      <label for="original_segment">Segment oryginalny</label>
+      <textarea id="original_segment" name="original_segment">{{ form_data.original_segment }}</textarea>
+    </div>
+    <div class="field full">
+      <label for="polish_segment">Segment polski</label>
+      <textarea id="polish_segment" name="polish_segment">{{ form_data.polish_segment }}</textarea>
+    </div>
+    <div class="field full">
+      <label for="comment">Komentarz</label>
+      <textarea id="comment" name="comment">{{ form_data.comment }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('source_detail', source_id=source.id) }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

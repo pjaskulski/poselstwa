@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Formularz tekstu źródłowego obejmuje podstawowe metadane, pełny tekst oryginału i przekładu oraz notę. Po zapisie aplikacja dzieli oba teksty na równoległe akapity według pustych wierszy.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="source_type">Typ źródła</label>
+      <select id="source_type" name="source_type" required>
+        <option value="">wybierz</option>
+        {% for item in source_type_options %}
+        <option value="{{ item.value }}" {% if form_data.source_type == item.value %}selected{% endif %}>{{ item.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="archive_signature">Sygnatura org.</label>
+      <input id="archive_signature" type="text" name="archive_signature" value="{{ form_data.archive_signature }}">
+    </div>
+    <div class="field">
+      <label for="edition_label">Edycja</label>
+      <input id="edition_label" type="text" name="edition_label" value="{{ form_data.edition_label }}">
+    </div>
+    <div class="field full">
+      <label for="original_text_full">Tekst oryginalny</label>
+      <textarea class="source-text-input" id="original_text_full" name="original_text_full">{{ form_data.original_text_full }}</textarea>
+    </div>
+    <div class="field full">
+      <label for="polish_text_full">Tekst polski</label>
+      <textarea class="source-text-input" id="polish_text_full" name="polish_text_full">{{ form_data.polish_text_full }}</textarea>
+    </div>
+    <div class="field full">
+      <label for="editorial_note">Nota</label>
+      <textarea id="editorial_note" name="editorial_note">{{ form_data.editorial_note }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ cancel_url }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Przypis i tekst biogramu.</p>
+    </div>
+  </div>
+
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="bibliography_item_id">Pozycja bibliograficzna</label>
+      <select id="bibliography_item_id" name="bibliography_item_id">
+        <option value="">brak</option>
+        {% for item in bibliography_options %}
+        <option value="{{ item.id }}" {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}>{{ item.short_citation }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label for="footnote_text">Przypis</label>
+      <textarea id="footnote_text" name="footnote_text">{{ form_data.footnote_text }}</textarea>
+    </div>
+    <div class="field full">
+      <label for="biography_text">Tekst biogramu</label>
+      <textarea id="biography_text" name="biography_text" required>{{ form_data.biography_text }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('person_detail', person_id=person.id) }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

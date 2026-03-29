@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <h2>{{ form_title }}</h2>
+      <p class="muted">Edycja udziału osoby w danym poselstwie.</p>
+    </div>
+  </div>
+
+  <form method="post" class="form-grid">
+    <div class="field">
+      <label for="person_id">Osoba</label>
+      <select id="person_id" name="person_id" required>
+        <option value="">wybierz</option>
+        {% for item in person_options %}
+        <option value="{{ item.id }}" {% if form_data.person_id == (item.id|string) %}selected{% endif %}>{{ item.canonical_name }}{% if item.display_name and item.display_name != item.canonical_name %} — {{ item.display_name }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="role_in_embassy">Rola w poselstwie</label>
+      <input id="role_in_embassy" type="text" name="role_in_embassy" value="{{ form_data.role_in_embassy }}">
+    </div>
+    <div class="field">
+      <label for="office_during_embassy">Urząd w czasie poselstwa</label>
+      <select id="office_during_embassy" name="office_during_embassy" {% if not form_data.person_id %}disabled{% endif %}>
+        <option value="">{% if form_data.person_id %}brak{% else %}najpierw wybierz osobę{% endif %}</option>
+        {% for option in office_options %}
+        <option value="{{ option.value }}" {% if form_data.office_during_embassy == option.value %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field full">
+      <label for="source_designation_latin">Określony w źródle (łac.)</label>
+      <input id="source_designation_latin" type="text" name="source_designation_latin" value="{{ form_data.source_designation_latin }}">
+    </div>
+    <div class="field full">
+      <label for="source_designation_polish">Określony w źródle (pol.)</label>
+      <input id="source_designation_polish" type="text" name="source_designation_polish" value="{{ form_data.source_designation_polish }}">
+    </div>
+    <div class="field full">
+      <label for="note">Nota</label>
+      <textarea id="note" name="note" rows="8">{{ form_data.note }}</textarea>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">{{ submit_label }}</button>
+      <a class="button ghost" href="{{ url_for('embassy_detail', embassy_id=embassy.id) }}">Anuluj</a>
+    </div>
+  </form>
+</section>
+<script>
+  (function () {
+    const personSelect = document.getElementById('person_id');
+    const officeSelect = document.getElementById('office_during_embassy');
+    if (!personSelect || !officeSelect) {
+      return;
+    }
+
+    function resetOfficeSelect(message) {
+      officeSelect.innerHTML = '';
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = message;
+      officeSelect.appendChild(option);
+      officeSelect.value = '';
+    }
+
+    async function loadOfficeOptions(personId) {
+      if (!personId) {
+        officeSelect.disabled = true;
+        resetOfficeSelect('najpierw wybierz osobę');
+        return;
+      }
+
+      officeSelect.disabled = true;
+      resetOfficeSelect('ładowanie urzędów...');
+
+      try {
+        const response = await fetch(`/persons/${personId}/offices/options`);
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error();
+        }
+        officeSelect.innerHTML = '';
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = 'brak';
+        officeSelect.appendChild(emptyOption);
+        result.options.forEach((item) => {
+          const option = document.createElement('option');
+          option.value = item.value;
+          option.textContent = item.label;
+          officeSelect.appendChild(option);
+        });
+        officeSelect.disabled = false;
+      } catch (error) {
+        officeSelect.disabled = true;
+        resetOfficeSelect('nie udało się pobrać urzędów');
+      }
+    }
+
+    personSelect.addEventListener('change', () => {
+      loadOfficeOptions(personSelect.value);
+    });
+  })();
+</script>
+{% endblock %}
