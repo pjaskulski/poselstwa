@@ -37,7 +37,6 @@ Projekt przygotowywany z użyciem AI (Codex 5.4)
 
 ## Zrzuty ekranu
 
-![screeenshot](doc/00.png)
 
 ![screeenshot](doc/01.png)
 

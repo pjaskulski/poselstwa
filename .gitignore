@@ -208,7 +208,6 @@ __marimo__/
 
 
 # Flask / local runtime data
-instance/*
 !instance/.gitkeep
 instance/poselstwa.sqlite
 instance/*.sqlite
