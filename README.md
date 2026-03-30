@@ -62,6 +62,8 @@ Projekt przygotowywany z użyciem AI (Codex 5.4)
 
 ![screeenshot](doc/12.png)
 
+![screeenshot](doc/12a.png)
+
 ![screeenshot](doc/13.png)
 
 ![screeenshot](doc/14.png)
