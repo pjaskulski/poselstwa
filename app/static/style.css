@@ -286,7 +286,21 @@ th { background: #faf5ee; }
 .field.full { grid-column: 1 / -1; }
 .inline-date-field { display: flex; gap: .5rem; align-items: stretch; flex-wrap: wrap; }
 .inline-select-action { display: flex; gap: .5rem; align-items: stretch; }
+.inline-select-action input { flex: 1 1 auto; min-width: 0; }
 .inline-select-action select { flex: 1 1 auto; min-width: 0; }
+.biography-reference-row {
+  flex-wrap: nowrap;
+}
+.biography-reference-row input,
+.biography-reference-row .button {
+  min-height: 2.45rem;
+}
+.biography-reference-row .button {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .inline-copy-field {
   display: flex;
   gap: .5rem;

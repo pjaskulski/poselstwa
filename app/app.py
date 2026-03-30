@@ -31,6 +31,7 @@ def create_app() -> Flask:
         ensure_historical_date_compatibility(g.db)
         ensure_bibliography_item_compatibility(g.db)
         ensure_embassy_bibliography_compatibility(g.db)
+        ensure_biography_note_compatibility(g.db)
 
     @app.teardown_request
     def teardown_request(exception: Exception | None) -> None:
@@ -1930,6 +1931,16 @@ def ensure_embassy_bibliography_compatibility(db: sqlite3.Connection) -> None:
         db.commit()
 
 
+def ensure_biography_note_compatibility(db: sqlite3.Connection) -> None:
+    columns = {
+        row['name']
+        for row in db.execute("PRAGMA table_info('biography_note')").fetchall()
+    }
+    if 'reference_locator' not in columns:
+        db.execute("ALTER TABLE biography_note ADD COLUMN reference_locator TEXT")
+        db.commit()
+
+
 def csv_response(filename: str, headers: list[str], rows: list[sqlite3.Row]):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -1975,7 +1986,8 @@ def fetch_historical_dates(db: sqlite3.Connection) -> list[sqlite3.Row]:
 def fetch_bibliography_items(db: sqlite3.Connection) -> list[sqlite3.Row]:
     return db.execute(
         '''
-        SELECT id, short_citation, title, publication_year, note
+        SELECT id, short_citation, author_text, editor_text, title,
+               publisher_text, publication_place, publication_year, note
         FROM bibliography_item
         ORDER BY short_citation ASC
         '''
@@ -2631,6 +2643,7 @@ def empty_biography_note_form(person_id: int) -> dict[str, str]:
     return {
         'person_id': str(person_id),
         'bibliography_item_id': '',
+        'reference_locator': '',
         'footnote_text': '',
         'biography_text': '',
         'sort_order': '0',
@@ -2641,6 +2654,7 @@ def biography_note_form_data_from_request(person_id: int) -> dict[str, str]:
     return {
         'person_id': str(person_id),
         'bibliography_item_id': form_value('bibliography_item_id'),
+        'reference_locator': form_value('reference_locator'),
         'footnote_text': form_value('footnote_text'),
         'biography_text': form_value('biography_text'),
         'sort_order': '0',
@@ -2651,6 +2665,7 @@ def biography_note_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
     return {
         'person_id': str(row['person_id']),
         'bibliography_item_id': str(row['bibliography_item_id'] or ''),
+        'reference_locator': row['reference_locator'] or '',
         'footnote_text': row['footnote_text'] or '',
         'biography_text': row['biography_text'] or '',
         'sort_order': str(row['sort_order'] if row['sort_order'] is not None else 0),
@@ -2668,13 +2683,14 @@ def insert_biography_note(db: sqlite3.Connection, form_data: dict[str, str]) -> 
     cur = db.execute(
         '''
         INSERT INTO biography_note (
-            uuid, person_id, bibliography_item_id, footnote_text, biography_text, sort_order
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            uuid, person_id, bibliography_item_id, reference_locator, footnote_text, biography_text, sort_order
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         ''',
         (
             str(uuid.uuid4()),
             int(form_data['person_id']),
             parse_optional_int(form_data['bibliography_item_id']),
+            form_data['reference_locator'] or None,
             form_data['footnote_text'] or None,
             form_data['biography_text'],
             int(form_data['sort_order']),
@@ -2689,6 +2705,7 @@ def update_biography_note(db: sqlite3.Connection, bio_id: int, form_data: dict[s
         '''
         UPDATE biography_note
         SET bibliography_item_id = ?,
+            reference_locator = ?,
             footnote_text = ?,
             biography_text = ?,
             sort_order = ?,
@@ -2697,6 +2714,7 @@ def update_biography_note(db: sqlite3.Connection, bio_id: int, form_data: dict[s
         ''',
         (
             parse_optional_int(form_data['bibliography_item_id']),
+            form_data['reference_locator'] or None,
             form_data['footnote_text'] or None,
             form_data['biography_text'],
             int(form_data['sort_order']),

@@ -15,9 +15,25 @@
       <select id="bibliography_item_id" name="bibliography_item_id">
         <option value="">brak</option>
         {% for item in bibliography_options %}
-        <option value="{{ item.id }}" {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}>{{ item.short_citation }}</option>
+        <option
+          value="{{ item.id }}"
+          data-author="{{ (item.author_text or '')|e }}"
+          data-editor="{{ (item.editor_text or '')|e }}"
+          data-title="{{ (item.title or item.note or '')|e }}"
+          data-publisher="{{ (item.publisher_text or '')|e }}"
+          data-place="{{ (item.publication_place or '')|e }}"
+          data-year="{{ (item.publication_year or '')|e }}"
+          {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}
+        >{{ item.short_citation }}</option>
         {% endfor %}
       </select>
+    </div>
+    <div class="field">
+      <label for="reference_locator">Numer strony / wpisu</label>
+      <div class="inline-select-action biography-reference-row">
+        <input id="reference_locator" type="text" name="reference_locator" value="{{ form_data.reference_locator }}">
+        <button type="button" class="button secondary text-action" id="generate-footnote-button">Utwórz przypis</button>
+      </div>
     </div>
     <div class="field full">
       <label for="footnote_text">Przypis</label>
@@ -33,4 +49,48 @@
     </div>
   </form>
 </section>
+<script>
+  (function () {
+    const bibliographySelect = document.getElementById('bibliography_item_id');
+    const locatorInput = document.getElementById('reference_locator');
+    const footnoteInput = document.getElementById('footnote_text');
+    const generateButton = document.getElementById('generate-footnote-button');
+    if (!bibliographySelect || !locatorInput || !footnoteInput || !generateButton) return;
+
+    function buildFootnote(option, locator) {
+      if (!option || !option.value) return '';
+      const author = (option.dataset.author || '').trim();
+      const editor = (option.dataset.editor || '').trim();
+      const title = (option.dataset.title || '').trim();
+      const publisher = (option.dataset.publisher || '').trim();
+      const place = (option.dataset.place || '').trim();
+      const year = (option.dataset.year || '').trim();
+      const parts = [];
+
+      if (author) {
+        parts.push(author);
+      } else if (editor) {
+        parts.push(`red. ${editor}`);
+      }
+      if (title) parts.push(title);
+      if (publisher) parts.push(publisher);
+      if (place) parts.push(place);
+      if (year) parts.push(year);
+      if (locator) parts.push(locator);
+      return parts.join(', ');
+    }
+
+    generateButton.addEventListener('click', () => {
+      const option = bibliographySelect.options[bibliographySelect.selectedIndex];
+      if (!option || !option.value) {
+        window.alert('Najpierw wybierz pozycję bibliograficzną.');
+        return;
+      }
+      if (footnoteInput.value.trim() && !window.confirm('Pole „Przypis” nie jest puste. Czy zastąpić jego obecną treść?')) {
+        return;
+      }
+      footnoteInput.value = buildFootnote(option, locatorInput.value.trim());
+    });
+  })();
+</script>
 {% endblock %}
