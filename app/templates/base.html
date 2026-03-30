@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Poselstwa{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ static_asset('style.css') }}">
 </head>
 <body>
   <header class="site-header">
@@ -75,9 +75,9 @@
         <div class="field full">
           <label>Zakres daty do sortowania i filtrowania</label>
           <div class="inline-copy-field">
-            <input id="quick-date-sort-start" type="text" name="sort_key_start" placeholder="YYYY-MM-DD">
+            <input id="quick-date-sort-start" class="iso-date-mask-input" type="text" name="sort_key_start" placeholder="____-__-__" maxlength="10" inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}" data-iso-date-mask>
             <button type="button" class="button ghost icon-action" id="quick-date-copy-range" title="Skopiuj wartość od do pola do" aria-label="Skopiuj wartość od do pola do">→</button>
-            <input id="quick-date-sort-end" type="text" name="sort_key_end" placeholder="YYYY-MM-DD">
+            <input id="quick-date-sort-end" class="iso-date-mask-input" type="text" name="sort_key_end" placeholder="____-__-__" maxlength="10" inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}" data-iso-date-mask>
           </div>
         </div>
         <div class="field full">
@@ -135,6 +135,10 @@
           <input id="quick-bibliography-place" type="text" name="publication_place">
         </div>
         <div class="field">
+          <label for="quick-bibliography-publisher">Wydawnictwo</label>
+          <input id="quick-bibliography-publisher" type="text" name="publisher_text">
+        </div>
+        <div class="field">
           <label for="quick-bibliography-year">Rok wydania</label>
           <input id="quick-bibliography-year" type="text" name="publication_year">
         </div>
@@ -150,7 +154,8 @@
       </form>
     </section>
   </div>
-  <script src="{{ url_for('static', filename='date_quick_create.js') }}"></script>
-  <script src="{{ url_for('static', filename='bibliography_quick_create.js') }}"></script>
+  <script src="{{ static_asset('iso_date_mask.js') }}"></script>
+  <script src="{{ static_asset('date_quick_create.js') }}"></script>
+  <script src="{{ static_asset('bibliography_quick_create.js') }}"></script>
 </body>
 </html>

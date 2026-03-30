@@ -86,17 +86,17 @@
   </article>
   <article class="card">
     <div class="section-head card-section-head">
-      <h3>Obecność przy Kurii</h3>
-      <a class="button secondary add-action icon-only-action" title="Dodaj obecność przy Kurii" aria-label="Dodaj obecność przy Kurii" href="{{ url_for('curia_presence_create', person_id=person.id) }}">+</a>
+      <h3>Obecność przy Stolicy Apostolskiej</h3>
+      <a class="button secondary add-action icon-only-action" title="Dodaj obecność przy Stolicy Apostolskiej" aria-label="Dodaj obecność przy Stolicy Apostolskiej" href="{{ url_for('curia_presence_create', person_id=person.id) }}">+</a>
     </div>
     {% for row in presences %}
     <div class="entry-block">
       <div class="entry-head">
         <strong>{{ row.place_name or 'miejsce nieustalone' }}</strong>
         <div class="table-icon-actions">
-          <a class="icon-link" title="Edytuj obecność przy Kurii" aria-label="Edytuj obecność przy Kurii" href="{{ url_for('curia_presence_edit', person_id=person.id, presence_id=row.id) }}">✎</a>
+          <a class="icon-link" title="Edytuj obecność przy Stolicy Apostolskiej" aria-label="Edytuj obecność przy Stolicy Apostolskiej" href="{{ url_for('curia_presence_edit', person_id=person.id, presence_id=row.id) }}">✎</a>
           <form method="post" action="{{ url_for('curia_presence_delete', person_id=person.id, presence_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć wpis o obecności przy Kurii?")|tojson }});'>
-            <button type="submit" class="icon-link icon-button" title="Usuń obecność przy Kurii" aria-label="Usuń obecność przy Kurii">×</button>
+            <button type="submit" class="icon-link icon-button" title="Usuń obecność przy Stolicy Apostolskiej" aria-label="Usuń obecność przy Stolicy Apostolskiej">×</button>
           </form>
         </div>
       </div>

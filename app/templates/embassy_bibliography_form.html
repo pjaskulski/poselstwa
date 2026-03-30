@@ -15,11 +15,23 @@
         <select id="bibliography_item_id" name="bibliography_item_id" required>
           <option value="">wybierz</option>
           {% for item in bibliography_options %}
-          <option value="{{ item.id }}" {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}>{{ item.short_citation }}</option>
+          <option
+            value="{{ item.id }}"
+            data-title="{{ (item.title or item.note or '')|e }}"
+            data-year="{{ (item.publication_year or '')|e }}"
+            {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}
+          >{{ item.short_citation }}</option>
           {% endfor %}
         </select>
         <button type="button" class="button ghost icon-action quick-bibliography-trigger" title="Dodaj nowe opracowanie" aria-label="Dodaj nowe opracowanie" data-target-select="bibliography_item_id">+</button>
       </div>
+    </div>
+    <div class="field full">
+      <div id="bibliography-item-preview" class="muted" aria-live="polite"></div>
+    </div>
+    <div class="field full">
+      <label for="page_range">Strona</label>
+      <input id="page_range" type="text" name="page_range" value="{{ form_data.page_range }}" placeholder="np. 17 lub 17–21">
     </div>
     <div class="field full">
       <label for="comment">Komentarz</label>
@@ -31,4 +43,29 @@
     </div>
   </form>
 </section>
+<script>
+  (function () {
+    const select = document.getElementById('bibliography_item_id');
+    const preview = document.getElementById('bibliography-item-preview');
+    if (!select || !preview) return;
+
+    function updatePreview() {
+      const option = select.options[select.selectedIndex];
+      if (!option || !option.value) {
+        preview.textContent = '';
+        return;
+      }
+      const title = option.dataset.title || '';
+      const year = option.dataset.year || '';
+      if (!title && !year) {
+        preview.textContent = '';
+        return;
+      }
+      preview.textContent = year ? `${title} (${year})` : title;
+    }
+
+    select.addEventListener('change', updatePreview);
+    updatePreview();
+  })();
+</script>
 {% endblock %}

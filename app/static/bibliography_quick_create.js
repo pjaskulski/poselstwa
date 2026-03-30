@@ -76,9 +76,12 @@
       const option = document.createElement('option');
       option.value = String(result.item.id);
       option.textContent = result.item.short_citation;
+      option.dataset.title = result.item.title || result.item.note || '';
+      option.dataset.year = result.item.publication_year || '';
       option.selected = true;
       targetSelect.appendChild(option);
       targetSelect.value = String(result.item.id);
+      targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
       closeModal();
     } catch (error) {
       const messages = Array.isArray(error?.errors) && error.errors.length ? error.errors : ['Nie udało się dodać pozycji bibliograficznej.'];

@@ -263,6 +263,7 @@ th { background: #faf5ee; }
   min-width: 0;
 }
 .annotation-item blockquote { margin: 1rem 0 0 0; padding: 1rem; background: #faf7f1; border-left: 4px solid var(--accent); }
+.annotation-note { margin-top: .65rem; }
 .annotation-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
 .flash-stack { margin: 1rem 0; display: grid; gap: .6rem; }
 .flash { padding: .8rem 1rem; border-radius: .5rem; border: 1px solid var(--line); background: #fffdf8; }
@@ -295,6 +296,15 @@ th { background: #faf5ee; }
   background: #fff;
   display: flex;
   align-items: center;
+}
+.iso-date-mask-input {
+  font-family: "Courier New", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .08em;
+}
+.iso-date-mask-input::placeholder {
+  color: #8b8174;
+  opacity: 1;
 }
 .color-picker-row {
   display: flex;

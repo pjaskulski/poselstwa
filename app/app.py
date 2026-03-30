@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 import re
 import sqlite3
 import uuid
@@ -28,6 +29,8 @@ def create_app() -> Flask:
         g.db = get_db(app)
         ensure_parameter_tables(g.db)
         ensure_historical_date_compatibility(g.db)
+        ensure_bibliography_item_compatibility(g.db)
+        ensure_embassy_bibliography_compatibility(g.db)
 
     @app.teardown_request
     def teardown_request(exception: Exception | None) -> None:
@@ -37,11 +40,17 @@ def create_app() -> Flask:
 
     @app.context_processor
     def utility_processor() -> dict[str, Any]:
+        def static_asset(filename: str) -> str:
+            asset_path = BASE_DIR / 'app' / 'static' / filename
+            version = int(os.path.getmtime(asset_path)) if asset_path.exists() else 0
+            return url_for('static', filename=filename, v=version)
+
         return {
             'render_date': render_date,
             'date_label': date_label,
             'prefixed_date_label': prefixed_date_label,
             'render_segment_with_annotations': render_segment_with_annotations,
+            'static_asset': static_asset,
         }
 
     @app.route('/')
@@ -708,7 +717,7 @@ def create_app() -> Flask:
                 flash(error, 'error')
         return render_template(
             'curia_presence_form.html',
-            form_title=f'Nowa obecność przy Kurii: {person["canonical_name"]}',
+            form_title=f'Nowa obecność przy Stolicy Apostolskiej: {person["canonical_name"]}',
             submit_label='Dodaj wpis',
             form_action=url_for('curia_presence_create', person_id=person_id),
             form_data=form_data,
@@ -758,7 +767,7 @@ def create_app() -> Flask:
             abort(404)
         g.db.execute('DELETE FROM curia_presence WHERE id = ?', (presence_id,))
         g.db.commit()
-        flash('Usunięto obecność przy Kurii.', 'success')
+        flash('Usunięto obecność przy Stolicy Apostolskiej.', 'success')
         return redirect(url_for('person_detail', person_id=person_id))
 
     @app.route('/embassies')
@@ -896,7 +905,8 @@ def create_app() -> Flask:
         ).fetchall()
         bibliography = db.execute(
             '''
-            SELECT eb.id, eb.comment, b.short_citation, b.full_citation
+            SELECT eb.id, eb.comment, eb.page_range,
+                   b.short_citation, b.full_citation, b.title, b.publication_year, b.note
             FROM embassy_bibliography eb
             JOIN bibliography_item b ON b.id = eb.bibliography_item_id
             WHERE eb.embassy_id = ?
@@ -1227,6 +1237,9 @@ def create_app() -> Flask:
             'item': {
                 'id': item_id,
                 'short_citation': form_data['short_citation'],
+                'title': form_data['title'],
+                'publication_year': form_data['publication_year'],
+                'note': form_data['note'],
             }
         })
 
@@ -1795,6 +1808,26 @@ def ensure_historical_date_compatibility(db: sqlite3.Connection) -> None:
     db.commit()
 
 
+def ensure_bibliography_item_compatibility(db: sqlite3.Connection) -> None:
+    columns = {
+        row['name']
+        for row in db.execute("PRAGMA table_info('bibliography_item')").fetchall()
+    }
+    if 'publisher_text' not in columns:
+        db.execute("ALTER TABLE bibliography_item ADD COLUMN publisher_text TEXT")
+        db.commit()
+
+
+def ensure_embassy_bibliography_compatibility(db: sqlite3.Connection) -> None:
+    columns = {
+        row['name']
+        for row in db.execute("PRAGMA table_info('embassy_bibliography')").fetchall()
+    }
+    if 'page_range' not in columns:
+        db.execute("ALTER TABLE embassy_bibliography ADD COLUMN page_range TEXT")
+        db.commit()
+
+
 def csv_response(filename: str, headers: list[str], rows: list[sqlite3.Row]):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -1840,7 +1873,7 @@ def fetch_historical_dates(db: sqlite3.Connection) -> list[sqlite3.Row]:
 def fetch_bibliography_items(db: sqlite3.Connection) -> list[sqlite3.Row]:
     return db.execute(
         '''
-        SELECT id, short_citation
+        SELECT id, short_citation, title, publication_year, note
         FROM bibliography_item
         ORDER BY short_citation ASC
         '''
@@ -2854,7 +2887,7 @@ def curia_presence_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
 
 def validate_curia_presence_form(form_data: dict[str, str]) -> list[str]:
     if not (form_data['place_name'] or form_data['presence_type'] or form_data['office_at_curia']):
-        return ['Wpis obecności powinien zawierać przynajmniej miejsce, typ obecności albo urząd przy Kurii.']
+        return ['Wpis obecności powinien zawierać przynajmniej miejsce, charakter obecności albo urząd przy Kurii.']
     return []
 
 
@@ -2923,6 +2956,7 @@ def empty_embassy_bibliography_form(embassy_id: int) -> dict[str, str]:
     return {
         'embassy_id': str(embassy_id),
         'bibliography_item_id': '',
+        'page_range': '',
         'comment': '',
     }
 
@@ -2931,6 +2965,7 @@ def embassy_bibliography_form_data_from_request(embassy_id: int) -> dict[str, st
     return {
         'embassy_id': str(embassy_id),
         'bibliography_item_id': form_value('bibliography_item_id'),
+        'page_range': form_value('page_range'),
         'comment': form_value('comment'),
     }
 
@@ -2939,6 +2974,7 @@ def embassy_bibliography_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
     return {
         'embassy_id': str(row['embassy_id']),
         'bibliography_item_id': str(row['bibliography_item_id']),
+        'page_range': row['page_range'] or '',
         'comment': row['comment'] or '',
     }
 
@@ -2960,13 +2996,14 @@ def validate_embassy_bibliography_form(form_data: dict[str, str], current_id: in
 def insert_embassy_bibliography(db: sqlite3.Connection, form_data: dict[str, str]) -> int:
     cur = db.execute(
         '''
-        INSERT INTO embassy_bibliography (uuid, embassy_id, bibliography_item_id, comment)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO embassy_bibliography (uuid, embassy_id, bibliography_item_id, page_range, comment)
+        VALUES (?, ?, ?, ?, ?)
         ''',
         (
             str(uuid.uuid4()),
             int(form_data['embassy_id']),
             int(form_data['bibliography_item_id']),
+            form_data['page_range'] or None,
             form_data['comment'] or None,
         ),
     )
@@ -2979,12 +3016,14 @@ def update_embassy_bibliography(db: sqlite3.Connection, entry_id: int, form_data
         '''
         UPDATE embassy_bibliography
         SET bibliography_item_id = ?,
+            page_range = ?,
             comment = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
         ''',
         (
             int(form_data['bibliography_item_id']),
+            form_data['page_range'] or None,
             form_data['comment'] or None,
             entry_id,
         ),
@@ -3000,6 +3039,7 @@ def empty_bibliography_item_form() -> dict[str, str]:
         'editor_text': '',
         'title': '',
         'publication_place': '',
+        'publisher_text': '',
         'publication_year': '',
         'volume_text': '',
         'series_text': '',
@@ -3023,6 +3063,7 @@ def bibliography_item_form_data_from_mapping(data: Any) -> dict[str, str]:
         'editor_text': read('editor_text'),
         'title': read('title'),
         'publication_place': read('publication_place'),
+        'publisher_text': read('publisher_text'),
         'publication_year': read('publication_year'),
         'volume_text': read('volume_text'),
         'series_text': read('series_text'),
@@ -3039,6 +3080,7 @@ def bibliography_item_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
         'editor_text': row['editor_text'] or '',
         'title': row['title'] or '',
         'publication_place': row['publication_place'] or '',
+        'publisher_text': row['publisher_text'] or '',
         'publication_year': row['publication_year'] or '',
         'volume_text': row['volume_text'] or '',
         'series_text': row['series_text'] or '',
@@ -3071,8 +3113,8 @@ def insert_bibliography_item(db: sqlite3.Connection, form_data: dict[str, str]) 
         '''
         INSERT INTO bibliography_item (
             uuid, item_type, short_citation, full_citation, author_text, editor_text,
-            title, publication_place, publication_year, volume_text, series_text, access_text, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            title, publication_place, publisher_text, publication_year, volume_text, series_text, access_text, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         (
             str(uuid.uuid4()),
@@ -3083,6 +3125,7 @@ def insert_bibliography_item(db: sqlite3.Connection, form_data: dict[str, str]) 
             form_data['editor_text'] or None,
             form_data['title'] or None,
             form_data['publication_place'] or None,
+            form_data['publisher_text'] or None,
             form_data['publication_year'] or None,
             form_data['volume_text'] or None,
             form_data['series_text'] or None,
@@ -3105,6 +3148,7 @@ def update_bibliography_item(db: sqlite3.Connection, item_id: int, form_data: di
             editor_text = ?,
             title = ?,
             publication_place = ?,
+            publisher_text = ?,
             publication_year = ?,
             volume_text = ?,
             series_text = ?,
@@ -3121,6 +3165,7 @@ def update_bibliography_item(db: sqlite3.Connection, item_id: int, form_data: di
             form_data['editor_text'] or None,
             form_data['title'] or None,
             form_data['publication_place'] or None,
+            form_data['publisher_text'] or None,
             form_data['publication_year'] or None,
             form_data['volume_text'] or None,
             form_data['series_text'] or None,

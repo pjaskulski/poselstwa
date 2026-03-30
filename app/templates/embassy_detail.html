@@ -65,7 +65,11 @@
           </form>
         </div>
       </div>
-      <div>{{ row.title or row.note or '—' }}</div>
+      <div>
+        {{ row.title or row.note or '—' }}
+        {% if row.publication_year %} ({{ row.publication_year }}){% endif %}
+      </div>
+      {% if row.page_range %}<div class="muted">Strona: {{ row.page_range }}</div>{% endif %}
       {% if row.comment %}<div class="muted">{{ row.comment }}</div>{% endif %}
     </div>
     {% else %}<p>Brak danych.</p>{% endfor %}

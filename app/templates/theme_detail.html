@@ -38,6 +38,9 @@
       {% endif %}
     </div>
     <blockquote>{{ row.annotated_text_snapshot }}</blockquote>
+    {% if row.comment %}
+    <div class="muted annotation-note"><strong>Nota</strong><br>{{ row.comment }}</div>
+    {% endif %}
     {% if row.source_segment_id %}
     <div class="hidden" id="preview-{{ row.id }}">
       <div class="section-head">

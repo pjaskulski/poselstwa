@@ -40,9 +40,9 @@
     <div class="field full">
       <label>Zakres daty do sortowania i filtrowania</label>
       <div class="inline-copy-field">
-        <input id="sort_key_start" type="text" name="sort_key_start" value="{{ form_data.sort_key_start }}" placeholder="YYYY-MM-DD">
+        <input id="sort_key_start" class="iso-date-mask-input" type="text" name="sort_key_start" value="{{ form_data.sort_key_start }}" placeholder="____-__-__" maxlength="10" inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}" data-iso-date-mask>
         <button type="button" class="button ghost icon-action" id="historical-date-copy-range" title="Skopiuj wartość od do pola do" aria-label="Skopiuj wartość od do pola do">→</button>
-        <input id="sort_key_end" type="text" name="sort_key_end" value="{{ form_data.sort_key_end }}" placeholder="YYYY-MM-DD">
+        <input id="sort_key_end" class="iso-date-mask-input" type="text" name="sort_key_end" value="{{ form_data.sort_key_end }}" placeholder="____-__-__" maxlength="10" inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}" data-iso-date-mask>
       </div>
     </div>
     <div class="field full">

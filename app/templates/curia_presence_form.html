@@ -10,6 +10,10 @@
   </div>
   <form method="post" class="form-grid">
     <div class="field">
+      <label for="year_label">Rok legacji</label>
+      <input id="year_label" type="text" name="year_label" value="{{ form_data.year_label }}">
+    </div>
+    <div class="field">
       <label for="start_date_id">Data początkowa</label>
       <div class="inline-date-field date-field-widget">
         <input id="start_date_id" type="hidden" name="start_date_id" value="{{ form_data.start_date_id }}">
@@ -26,15 +30,11 @@
       </div>
     </div>
     <div class="field">
-      <label for="year_label">Etykieta roku</label>
-      <input id="year_label" type="text" name="year_label" value="{{ form_data.year_label }}">
-    </div>
-    <div class="field">
       <label for="place_name">Miejsce</label>
       <input id="place_name" type="text" name="place_name" value="{{ form_data.place_name }}">
     </div>
     <div class="field">
-      <label for="presence_type">Typ obecności</label>
+      <label for="presence_type">Charakter obecności</label>
       <input id="presence_type" type="text" name="presence_type" value="{{ form_data.presence_type }}">
     </div>
     <div class="field">
@@ -55,12 +55,12 @@
       </select>
     </div>
     <div class="field full">
-      <label for="scholarly_comment">Komentarz badawczy</label>
-      <textarea id="scholarly_comment" name="scholarly_comment">{{ form_data.scholarly_comment }}</textarea>
-    </div>
-    <div class="field full">
       <label for="working_comment">Komentarz roboczy</label>
       <textarea id="working_comment" name="working_comment">{{ form_data.working_comment }}</textarea>
+    </div>
+    <div class="field full">
+      <label for="scholarly_comment">Komentarz dziedzinowy</label>
+      <textarea id="scholarly_comment" name="scholarly_comment">{{ form_data.scholarly_comment }}</textarea>
     </div>
     <div class="form-actions full">
       <button type="submit">{{ submit_label }}</button>

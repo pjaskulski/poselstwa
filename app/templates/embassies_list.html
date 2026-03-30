@@ -4,7 +4,7 @@
 <div class="toolbar card">
   <form class="filters" method="get">
     <div class="filter-search-stack">
-      <input class="filter-search-wide" type="search" name="q" value="{{ q }}" placeholder="Szukaj tytułu, tematu misji, opisu">
+      <input class="filter-search-wide" type="search" name="q" value="{{ q }}" placeholder="Szukaj tytułu poselstwa, przedmiotu misji, opisu, uczestnika">
       <button type="button" class="filter-toggle" id="date-filter-toggle">Filtrowanie dat</button>
     </div>
     <button type="submit">Filtruj</button>
@@ -26,11 +26,11 @@
       </div>
       <div class="field">
         <label for="audience_from">Zakres od</label>
-        <input id="audience_from" type="text" name="audience_from" value="{{ audience_from }}" placeholder="YYYY-MM-DD">
+        <input id="audience_from" class="iso-date-mask-input" type="text" name="audience_from" value="{{ audience_from }}" placeholder="____-__-__" maxlength="10" inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}" data-iso-date-mask>
       </div>
       <div class="field">
         <label for="audience_to">Zakres do</label>
-        <input id="audience_to" type="text" name="audience_to" value="{{ audience_to }}" placeholder="YYYY-MM-DD">
+        <input id="audience_to" class="iso-date-mask-input" type="text" name="audience_to" value="{{ audience_to }}" placeholder="____-__-__" maxlength="10" inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}" data-iso-date-mask>
       </div>
     </div>
   </form>
