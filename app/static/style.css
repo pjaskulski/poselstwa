@@ -271,6 +271,16 @@ th { background: #faf5ee; }
 .flash-error { background: #fff1ef; border-color: #f2c0b8; color: #9b2c2c; }
 .form-card { max-width: 980px; margin: 0 auto 1rem auto; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.embassy-form-top-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(180px, .7fr);
+  gap: 1rem;
+  align-items: start;
+}
+.embassy-year-field {
+  justify-self: stretch;
+}
 .field { display: grid; gap: .35rem; }
 .field label { font-weight: bold; color: var(--muted); }
 .field.full { grid-column: 1 / -1; }

@@ -10,13 +10,15 @@
   </div>
 
   <form method="post" class="form-grid">
-    <div class="field">
-      <label for="title">Tytuł poselstwa</label>
-      <input id="title" type="text" name="title" value="{{ form_data.title }}" required>
-    </div>
-    <div class="field">
-      <label for="year_label">Rok</label>
-      <input id="year_label" type="text" name="year_label" value="{{ form_data.year_label }}" placeholder="np. 1492">
+    <div class="embassy-form-top-row full">
+      <div class="field">
+        <label for="title">Tytuł poselstwa</label>
+        <input id="title" type="text" name="title" value="{{ form_data.title }}" required>
+      </div>
+      <div class="field embassy-year-field">
+        <label for="year_label">Rok</label>
+        <input id="year_label" type="text" name="year_label" value="{{ form_data.year_label }}" placeholder="np. 1492">
+      </div>
     </div>
     <div class="field full">
       <label for="mission_subject">Przedmiot misji</label>
