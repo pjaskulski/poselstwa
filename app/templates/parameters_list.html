@@ -42,4 +42,37 @@
     </tbody>
   </table>
 </section>
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h3>Typy urzędów</h3>
+    </div>
+    <a class="button secondary add-action icon-only-action" title="Dodaj typ urzędu" aria-label="Dodaj typ urzędu" href="{{ url_for('parameter_office_type_create') }}">+</a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Nazwa</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in office_type_rows %}
+      <tr>
+        <td>{{ row.label or row.value }}</td>
+        <td>
+          <div class="table-icon-actions">
+            <a class="icon-link" title="Edytuj typ urzędu" aria-label="Edytuj typ urzędu" href="{{ url_for('parameter_office_type_edit', type_id=row.id) }}">✎</a>
+            <form method="post" action="{{ url_for('parameter_office_type_delete', type_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć typ urzędu: " ~ (row.label or row.value) ~ "?")|tojson }});'>
+              <button type="submit" class="icon-link icon-button" title="Usuń typ urzędu" aria-label="Usuń typ urzędu">×</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2">Brak typów urzędów.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
 {% endblock %}

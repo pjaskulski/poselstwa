@@ -528,7 +528,7 @@ def create_app() -> Flask:
             person=person,
             date_options=fetch_historical_dates(g.db),
             bibliography_options=fetch_bibliography_items(g.db),
-            office_type_options=office_term_type_options(),
+            office_type_options=fetch_office_type_options(g.db, form_data['office_type'] or None),
         )
 
     @app.route('/persons/<int:person_id>/offices/<int:office_id>/edit', methods=['GET', 'POST'])
@@ -557,7 +557,7 @@ def create_app() -> Flask:
             person=person,
             date_options=fetch_historical_dates(g.db),
             bibliography_options=fetch_bibliography_items(g.db),
-            office_type_options=office_term_type_options(),
+            office_type_options=fetch_office_type_options(g.db, form_data['office_type'] or None),
         )
 
     @app.route('/persons/<int:person_id>/offices/<int:office_id>/delete', methods=['POST'])
@@ -1658,7 +1658,7 @@ def create_app() -> Flask:
 
     @app.route('/parameters')
     def parameters_list():
-        rows = g.db.execute(
+        source_type_rows = g.db.execute(
             '''
             SELECT std.*,
                    COUNT(st.id) AS usage_count
@@ -1668,7 +1668,21 @@ def create_app() -> Flask:
             ORDER BY std.sort_order ASC, std.value ASC
             '''
         ).fetchall()
-        return render_template('parameters_list.html', rows=rows)
+        office_type_rows = g.db.execute(
+            '''
+            SELECT otd.*,
+                   COUNT(ot.id) AS usage_count
+            FROM office_type_dictionary otd
+            LEFT JOIN office_term ot ON ot.office_type = otd.value
+            GROUP BY otd.id
+            ORDER BY otd.sort_order ASC, otd.value ASC
+            '''
+        ).fetchall()
+        return render_template(
+            'parameters_list.html',
+            source_type_rows=source_type_rows,
+            office_type_rows=office_type_rows,
+        )
 
     @app.route('/parameters/source-types')
     def parameter_source_type_list():
@@ -1732,6 +1746,64 @@ def create_app() -> Flask:
         flash('Usunięto typ źródła.', 'success')
         return redirect(url_for('parameters_list'))
 
+    @app.route('/parameters/office-types/new', methods=['GET', 'POST'])
+    def parameter_office_type_create():
+        form_data = empty_office_type_form()
+        if request.method == 'POST':
+            form_data = office_type_form_data_from_mapping(request.form)
+            errors = validate_office_type_form(form_data)
+            if not errors:
+                insert_office_type(g.db, form_data)
+                flash('Dodano typ urzędu.', 'success')
+                return redirect(url_for('parameters_list'))
+            for error in errors:
+                flash(error, 'error')
+        return render_template(
+            'parameter_office_type_form.html',
+            form_title='Nowy typ urzędu',
+            submit_label='Dodaj typ',
+            form_action=url_for('parameter_office_type_create'),
+            form_data=form_data,
+        )
+
+    @app.route('/parameters/office-types/<int:type_id>/edit', methods=['GET', 'POST'])
+    def parameter_office_type_edit(type_id: int):
+        row = g.db.execute('SELECT * FROM office_type_dictionary WHERE id = ?', (type_id,)).fetchone()
+        if not row:
+            abort(404)
+        if request.method == 'POST':
+            form_data = office_type_form_data_from_mapping(request.form)
+            errors = validate_office_type_form(form_data, current_id=type_id)
+            if not errors:
+                update_office_type(g.db, type_id, form_data, old_value=row['value'])
+                flash('Zapisano zmiany typu urzędu.', 'success')
+                return redirect(url_for('parameters_list'))
+            for error in errors:
+                flash(error, 'error')
+        else:
+            form_data = office_type_form_data_from_row(row)
+        return render_template(
+            'parameter_office_type_form.html',
+            form_title=f'Edycja typu urzędu: {row["label"] or row["value"]}',
+            submit_label='Zapisz zmiany',
+            form_action=url_for('parameter_office_type_edit', type_id=type_id),
+            form_data=form_data,
+        )
+
+    @app.route('/parameters/office-types/<int:type_id>/delete', methods=['POST'])
+    def parameter_office_type_delete(type_id: int):
+        row = g.db.execute('SELECT * FROM office_type_dictionary WHERE id = ?', (type_id,)).fetchone()
+        if not row:
+            abort(404)
+        usage_count = g.db.execute('SELECT COUNT(*) FROM office_term WHERE office_type = ?', (row['value'],)).fetchone()[0]
+        if usage_count:
+            flash('Nie można usunąć typu urzędu, który jest już przypisany do urzędów lub funkcji.', 'error')
+            return redirect(url_for('parameters_list'))
+        g.db.execute('DELETE FROM office_type_dictionary WHERE id = ?', (type_id,))
+        g.db.commit()
+        flash('Usunięto typ urzędu.', 'success')
+        return redirect(url_for('parameters_list'))
+
     @app.route('/about')
     def about():
         return render_template('about.html')
@@ -1761,6 +1833,20 @@ def ensure_parameter_tables(db: sqlite3.Connection) -> None:
         )
         '''
     )
+    db.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS office_type_dictionary (
+            id INTEGER PRIMARY KEY,
+            uuid TEXT NOT NULL UNIQUE,
+            value TEXT NOT NULL UNIQUE,
+            label TEXT NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        '''
+    )
     existing_values = {row['value'] for row in db.execute('SELECT value FROM source_type_dictionary').fetchall()}
     source_values = [
         row['source_type']
@@ -1779,6 +1865,22 @@ def ensure_parameter_tables(db: sqlite3.Connection) -> None:
         db.execute(
             '''
             INSERT INTO source_type_dictionary (uuid, value, label, sort_order, is_active)
+            VALUES (?, ?, ?, ?, 1)
+            ''',
+            (str(uuid.uuid4()), value, value, index * 10),
+        )
+    existing_office_values = {row['value'] for row in db.execute('SELECT value FROM office_type_dictionary').fetchall()}
+    office_values = [
+        'urząd kościelny',
+        'urząd świecki',
+        'inny',
+    ]
+    for index, value in enumerate(office_values, start=1):
+        if value in existing_office_values:
+            continue
+        db.execute(
+            '''
+            INSERT INTO office_type_dictionary (uuid, value, label, sort_order, is_active)
             VALUES (?, ?, ?, ?, 1)
             ''',
             (str(uuid.uuid4()), value, value, index * 10),
@@ -1899,6 +2001,21 @@ def fetch_source_type_options(db: sqlite3.Connection, current_value: str | None 
         ORDER BY sort_order ASC, value ASC
         '''
     ).fetchall()
+
+
+def fetch_office_type_options(db: sqlite3.Connection, current_value: str | None = None) -> list[tuple[str, str]]:
+    rows = db.execute(
+        '''
+        SELECT value, label
+        FROM office_type_dictionary
+        WHERE is_active = 1 OR value = ?
+        ORDER BY sort_order ASC, value ASC
+        ''',
+        (current_value or '',),
+    ).fetchall()
+    options: list[tuple[str, str]] = [('', '- brak -')]
+    options.extend((row['value'], row['label'] or row['value']) for row in rows if row['value'])
+    return options
 
 
 def bibliography_item_type_options() -> list[tuple[str, str]]:
@@ -2439,20 +2556,11 @@ def office_term_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
     }
 
 
-def office_term_type_options() -> list[tuple[str, str]]:
-    return [
-        ('', '- brak -'),
-        ('urząd kościelny', 'urząd kościelny'),
-        ('urząd świecki', 'urząd świecki'),
-        ('inny', 'inny'),
-    ]
-
-
 def validate_office_term_form(form_data: dict[str, str]) -> list[str]:
     errors: list[str] = []
     if not form_data['office_name']:
         errors.append('Pole "Nazwa urzędu / godności" jest wymagane.')
-    allowed_types = {value for value, _ in office_term_type_options()}
+    allowed_types = {value for value, _ in fetch_office_type_options(g.db, form_data['office_type'] or None)}
     if form_data['office_type'] not in allowed_types:
         errors.append('Wybrano nieprawidłowy typ urzędu.')
     return errors
@@ -3253,6 +3361,85 @@ def update_source_type(db: sqlite3.Connection, type_id: int, form_data: dict[str
     )
     if form_data['name'] != old_value:
         db.execute('UPDATE source_text SET source_type = ?, updated_at = CURRENT_TIMESTAMP WHERE source_type = ?', (form_data['name'], old_value))
+    db.commit()
+
+
+def empty_office_type_form() -> dict[str, str]:
+    return {
+        'name': '',
+    }
+
+
+def office_type_form_data_from_mapping(data: Any) -> dict[str, str]:
+    value = data.get('name', '')
+    if value is None:
+        value = ''
+    return {
+        'name': str(value).strip(),
+    }
+
+
+def office_type_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
+    return {
+        'name': row['label'] or row['value'] or '',
+    }
+
+
+def validate_office_type_form(form_data: dict[str, str], current_id: int | None = None) -> list[str]:
+    errors: list[str] = []
+    if not form_data['name']:
+        errors.append('Pole "Nazwa" jest wymagane.')
+    row = g.db.execute('SELECT id FROM office_type_dictionary WHERE value = ?', (form_data['name'],)).fetchone()
+    if row and row['id'] != current_id:
+        errors.append('Typ urzędu o takiej nazwie już istnieje.')
+    return errors
+
+
+def insert_office_type(db: sqlite3.Connection, form_data: dict[str, str]) -> int:
+    max_sort_order = db.execute('SELECT COALESCE(MAX(sort_order), 0) FROM office_type_dictionary').fetchone()[0]
+    cur = db.execute(
+        '''
+        INSERT INTO office_type_dictionary (uuid, value, label, sort_order, is_active)
+        VALUES (?, ?, ?, ?, ?)
+        ''',
+        (
+            str(uuid.uuid4()),
+            form_data['name'],
+            form_data['name'],
+            int(max_sort_order) + 10,
+            1,
+        ),
+    )
+    db.commit()
+    return int(cur.lastrowid)
+
+
+def update_office_type(db: sqlite3.Connection, type_id: int, form_data: dict[str, str], old_value: str) -> None:
+    row = db.execute('SELECT sort_order FROM office_type_dictionary WHERE id = ?', (type_id,)).fetchone()
+    sort_order = row['sort_order'] if row else 0
+    db.execute(
+        '''
+        UPDATE office_type_dictionary
+        SET value = ?,
+            label = ?,
+            sort_order = ?,
+            is_active = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        ''',
+        (
+            form_data['name'],
+            form_data['name'],
+            sort_order,
+            1,
+            type_id,
+        ),
+    )
+    if form_data['name'] != old_value:
+        db.execute(
+            'UPDATE office_term SET office_type = ?, updated_at = CURRENT_TIMESTAMP WHERE office_type = ?',
+            (form_data['name'], old_value),
+        )
     db.commit()
 
 
