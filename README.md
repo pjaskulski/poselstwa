@@ -29,33 +29,6 @@ Następnie należy otworzyć adres:
 http://127.0.0.1:5000/
 ```
 
-## Tryb lokalny offline
-
-Dla pracy na pojedynczym laptopie można korzystać z prostych skryptów:
-
-- Linux: `Uruchom_Poselstwa.sh`
-- Windows: `Uruchom_Poselstwa.bat`
-- kopia zapasowa Linux: `Kopia_Zapasowa.sh`
-- kopia zapasowa Windows: `Kopia_Zapasowa.bat`
-
-Szczegółowa instrukcja dla użytkownika końcowego jest w pliku:
-
-`INSTRUKCJA_LOKALNA.md`
-
-## Wariant portable dla Windows
-
-Repo zostało przygotowane także pod budowę paczki Windows bez instalacji Pythona po stronie historyka.
-
-Szczegóły są w pliku:
-
-`PAKIET_WINDOWS.md`
-
-Pomocniczy skrypt budujący katalog pakietu:
-
-```bash
-python tools/build_windows_portable.py
-```
-
 ## Uwagi
 
 To jest **prototyp**, nie pełna aplikacja produkcyjna.
