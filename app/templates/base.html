@@ -9,11 +9,12 @@
 <body>
   <header class="site-header">
     <div class="wrap">
-      <div>
+      <div class="header-brand">
         <h1><a href="{{ url_for('index') }}">LegationesAdVaticanum</a></h1>
-        <p class="subtitle">Aplikacja do badań historii dyplomatycznej Polski i Stolicy Apostolskiej w XV wieku</p>
+        <p class="subtitle">Baza polskich poselstw do  Stolicy Apostolskiej w XV wieku</p>
       </div>
-      <nav>
+      {% if current_user %}
+      <nav class="main-nav">
         {% set endpoint = request.endpoint or '' %}
         <a href="{{ url_for('persons_list') }}" class="{% if endpoint == 'persons_list' or endpoint.startswith('person_') %}active{% endif %}">Osoby</a>
         <a href="{{ url_for('embassies_list') }}" class="{% if endpoint == 'embassies_list' or endpoint.startswith('embassy_') or endpoint.startswith('source_') or endpoint.startswith('theme_annotation_') %}active{% endif %}">Poselstwa</a>
@@ -21,7 +22,16 @@
         <a href="{{ url_for('bibliography_list') }}" class="{% if endpoint == 'bibliography_list' or endpoint.startswith('bibliography_') %}active{% endif %}">Literatura</a>
         <a href="{{ url_for('parameters_list') }}" class="{% if endpoint == 'parameters_list' or endpoint.startswith('parameter_') %}active{% endif %}">Parametry</a>
       </nav>
+      {% endif %}
     </div>
+    {% if current_user %}
+    <div class="user-nav header-corner">
+      <span>Zalogowano: <strong>{{ current_user.display_name or current_user.username }}</strong></span>
+      <form method="post" action="{{ url_for('auth_logout') }}">
+        <button type="submit" class="button ghost text-action">Wyloguj</button>
+      </form>
+    </div>
+    {% endif %}
   </header>
   <main class="wrap">
     {% with messages = get_flashed_messages(with_categories=true) %}

@@ -9,8 +9,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, send_file, url_for
+import click
+from flask import Flask, abort, flash, g, has_request_context, jsonify, redirect, render_template, request, send_file, session, url_for
 from markupsafe import Markup, escape
+from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / 'instance' / 'poselstwa.sqlite'
@@ -20,7 +22,7 @@ SCHEMA_PATH = BASE_DIR / 'doc' / 'schemat_bazy.sql'
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config['DATABASE'] = str(DB_PATH)
-    app.config['SECRET_KEY'] = 'poselstwa-dev'
+    app.config['SECRET_KEY'] = os.environ.get('POSELSTWA_SECRET_KEY', 'poselstwa-dev')
 
     (BASE_DIR / 'instance').mkdir(exist_ok=True)
 
@@ -32,6 +34,13 @@ def create_app() -> Flask:
         ensure_bibliography_item_compatibility(g.db)
         ensure_embassy_bibliography_compatibility(g.db)
         ensure_biography_note_compatibility(g.db)
+        g.current_user = fetch_current_user(g.db)
+        endpoint = request.endpoint or ''
+        if endpoint == 'static' or endpoint in {'auth_login', 'auth_logout'}:
+            return
+        if g.current_user is None:
+            flash('Zaloguj się, aby korzystać z aplikacji.', 'warning')
+            return redirect(url_for('auth_login', next=request.full_path if request.query_string else request.path))
 
     @app.teardown_request
     def teardown_request(exception: Exception | None) -> None:
@@ -52,7 +61,74 @@ def create_app() -> Flask:
             'prefixed_date_label': prefixed_date_label,
             'render_segment_with_annotations': render_segment_with_annotations,
             'static_asset': static_asset,
+            'current_user': getattr(g, 'current_user', None),
         }
+
+    @app.route('/login', methods=['GET', 'POST'])
+    def auth_login():
+        if g.current_user is not None:
+            return redirect(url_for('index'))
+        next_url = request.values.get('next', '').strip()
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            user = g.db.execute('SELECT * FROM app_user WHERE username = ?', (username,)).fetchone()
+            if user and verify_app_user_password(g.db, user, password):
+                session.clear()
+                session['user_id'] = int(user['id'])
+                flash(f'Zalogowano jako {user["display_name"] or user["username"]}.', 'success')
+                return redirect(safe_redirect_target(next_url))
+            flash('Nieprawidłowy login lub hasło.', 'error')
+        return render_template('login.html', next_url=next_url)
+
+    @app.route('/logout', methods=['POST'])
+    def auth_logout():
+        session.clear()
+        flash('Wylogowano z aplikacji.', 'success')
+        return redirect(url_for('auth_login'))
+
+    @app.cli.command('create-user')
+    @click.option('--username', prompt=True)
+    @click.password_option('--password', prompt=True, confirmation_prompt=True)
+    @click.option('--display-name', prompt='Nazwa wyświetlana', default='', show_default=False)
+    def create_user_command(username: str, password: str, display_name: str) -> None:
+        normalized_username = username.strip()
+        if not normalized_username:
+            raise click.ClickException('Login nie może być pusty.')
+        existing = get_db(app).execute('SELECT id FROM app_user WHERE username = ?', (normalized_username,)).fetchone()
+        if existing:
+            raise click.ClickException(f'Użytkownik {normalized_username} już istnieje.')
+        db = get_db(app)
+        db.execute(
+            '''
+            INSERT INTO app_user (uuid, username, password_hash, display_name)
+            VALUES (?, ?, ?, ?)
+            ''',
+            (
+                str(uuid.uuid4()),
+                normalized_username,
+                generate_password_hash(password),
+                display_name.strip() or normalized_username,
+            ),
+        )
+        db.commit()
+        click.echo(f'Utworzono użytkownika: {normalized_username}')
+
+    @app.cli.command('set-password')
+    @click.option('--username', prompt=True)
+    @click.password_option('--password', prompt=True, confirmation_prompt=True)
+    def set_password_command(username: str, password: str) -> None:
+        normalized_username = username.strip()
+        db = get_db(app)
+        row = db.execute('SELECT id FROM app_user WHERE username = ?', (normalized_username,)).fetchone()
+        if not row:
+            raise click.ClickException(f'Nie znaleziono użytkownika: {normalized_username}')
+        db.execute(
+            'UPDATE app_user SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            (generate_password_hash(password), int(row['id'])),
+        )
+        db.commit()
+        click.echo(f'Zmieniono hasło użytkownika: {normalized_username}')
 
     @app.route('/')
     def index():
@@ -2238,8 +2314,47 @@ def update_historical_date(db: sqlite3.Connection, date_id: int, form_data: dict
 
 
 def get_default_user_id(db: sqlite3.Connection) -> int | None:
+    current_user = getattr(g, 'current_user', None) if has_request_context() else None
+    if current_user:
+        return int(current_user['id'])
     row = db.execute('SELECT id FROM app_user ORDER BY id ASC LIMIT 1').fetchone()
     return row['id'] if row else None
+
+
+def fetch_current_user(db: sqlite3.Connection) -> sqlite3.Row | None:
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
+    return db.execute(
+        'SELECT id, username, display_name FROM app_user WHERE id = ?',
+        (int(user_id),),
+    ).fetchone()
+
+
+def safe_redirect_target(target: str | None) -> str:
+    value = (target or '').strip()
+    if value.startswith('/') and not value.startswith('//'):
+        return value
+    return url_for('index')
+
+
+def verify_app_user_password(db: sqlite3.Connection, user: sqlite3.Row, password: str) -> bool:
+    stored = user['password_hash'] or ''
+    if not password:
+        return False
+    try:
+        if check_password_hash(stored, password):
+            return True
+    except ValueError:
+        pass
+    if stored == password:
+        db.execute(
+            'UPDATE app_user SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            (generate_password_hash(password), int(user['id'])),
+        )
+        db.commit()
+        return True
+    return False
 
 
 DATE_LINK_TARGETS: dict[str, dict[str, Any]] = {

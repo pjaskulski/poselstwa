@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 import uuid
 
+from werkzeug.security import generate_password_hash
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / 'instance' / 'poselstwa.sqlite'
 SCHEMA_PATH = BASE_DIR / 'doc' / 'schemat_bazy.sql'
@@ -27,7 +29,7 @@ def main() -> None:
     conn.executescript(SCHEMA_PATH.read_text(encoding='utf-8'))
     cur = conn.cursor()
 
-    user_id = insert(cur, 'INSERT INTO app_user (uuid, username, password_hash, display_name) VALUES (?, ?, ?, ?)', (u(), 'historyk', 'demo', 'Badacz demonstracyjny'))
+    user_id = insert(cur, 'INSERT INTO app_user (uuid, username, password_hash, display_name) VALUES (?, ?, ?, ?)', (u(), 'historyk', generate_password_hash('demo'), 'Badacz demonstracyjny'))
 
     dates = {}
     for key, kind, start, end, label in [

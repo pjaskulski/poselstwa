@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Logowanie{% endblock %}
+{% block content %}
+<section class="card form-card login-card">
+  <div class="title-row">
+    <div>
+      <h2>Logowanie</h2>
+      <p class="muted">Dostęp do aplikacji jest chroniony. Zaloguj się, aby pracować z bazą poselstw.</p>
+    </div>
+  </div>
+  <form method="post" class="form-grid">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <div class="field full">
+      <label for="username">Login</label>
+      <input id="username" type="text" name="username" autocomplete="username" required autofocus>
+    </div>
+    <div class="field full">
+      <label for="password">Hasło</label>
+      <input id="password" type="password" name="password" autocomplete="current-password" required>
+    </div>
+    <div class="form-actions full">
+      <button type="submit">Zaloguj</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
