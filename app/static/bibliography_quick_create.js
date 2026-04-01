@@ -1,4 +1,5 @@
 (function () {
+  const appConfig = window.APP_CONFIG || { urls: {} };
   const modal = document.getElementById('quick-bibliography-modal');
   const form = document.getElementById('quick-bibliography-form');
   if (!modal || !form) {
@@ -64,7 +65,7 @@
     const payload = Object.fromEntries(new FormData(form).entries());
 
     try {
-      const response = await fetch('/bibliography/quick-create', {
+      const response = await fetch(appConfig.urls.quickBibliographyCreate || '/bibliography/quick-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

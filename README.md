@@ -29,6 +29,52 @@ Następnie należy otworzyć adres:
 http://127.0.0.1:5000/
 ```
 
+## Wdrożenie na Ubuntu z gunicorn i nginx
+
+Repozytorium zawiera przykładowe pliki wdrożeniowe:
+
+- [deploy/poselstwa.service](deploy/poselstwa.service)
+- [deploy/nginx-poselstwa.conf](deploy/nginx-poselstwa.conf)
+
+Zalecany wariant:
+
+1. sklonować repozytorium do katalogu aplikacji, np. `/srv/poselstwa`,
+2. utworzyć osobne środowisko `venv` i zainstalować zależności,
+3. skonfigurować `systemd` dla `gunicorn`,
+4. wystawić aplikację przez `nginx` pod prefiksem `/poselstwa/`.
+
+Przykład:
+
+```bash
+cd /srv
+git clone <repozytorium> poselstwa
+cd poselstwa
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app/seed.py
+```
+
+Następnie:
+
+- dopasować ścieżki i użytkownika w `deploy/poselstwa.service`,
+- skopiować plik do `/etc/systemd/system/poselstwa.service`,
+- ustawić własny `POSELSTWA_SECRET_KEY`,
+- włączyć usługę:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable poselstwa
+sudo systemctl start poselstwa
+```
+
+W konfiguracji `nginx` należy użyć bloku z `deploy/nginx-poselstwa.conf`.
+Obecna aplikacja jest już przygotowana do pracy za reverse proxy z nagłówkiem:
+
+```text
+X-Forwarded-Prefix: /poselstwa
+```
+
 ## Uwagi
 
 To jest **prototyp**, nie pełna aplikacja produkcyjna.

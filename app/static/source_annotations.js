@@ -1,4 +1,5 @@
 (function () {
+  const scriptRoot = ((window.APP_CONFIG && window.APP_CONFIG.scriptRoot) || '').replace(/\/$/, '');
   const selectionActions = document.querySelectorAll('.selection-actions');
   if (!selectionActions.length) return;
 
@@ -22,7 +23,8 @@
       char_start: String(start),
       char_end: String(end),
     });
-    return `/sources/${sourceId}/segments/${segmentId}/annotations/new?${params.toString()}`;
+    const path = `/sources/${sourceId}/segments/${segmentId}/annotations/new?${params.toString()}`;
+    return scriptRoot ? `${scriptRoot}${path}` : path;
   };
 
   const getSelectionData = (container) => {

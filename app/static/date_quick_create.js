@@ -1,4 +1,5 @@
 (function () {
+  const appConfig = window.APP_CONFIG || { scriptRoot: '', urls: {} };
   const modal = document.getElementById('quick-date-modal');
   const form = document.getElementById('quick-date-form');
   const errorBox = document.getElementById('quick-date-errors');
@@ -11,6 +12,12 @@
   }
 
   let activeConfig = null;
+
+  function joinScriptRoot(path) {
+    const root = (appConfig.scriptRoot || '').replace(/\/$/, '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return root ? `${root}${cleanPath}` : cleanPath;
+  }
 
   function isPersistedTarget(config) {
     return config && config.entityType && Number(config.recordId) > 0;
@@ -62,7 +69,7 @@
     modal.setAttribute('aria-hidden', 'false');
 
     if (form.elements.date_id.value) {
-      fetch(`/dates/${form.elements.date_id.value}/json`)
+      fetch(joinScriptRoot(`/dates/${form.elements.date_id.value}/json`))
         .then((response) => response.json())
         .then((result) => {
           if (!result.ok) {
@@ -93,7 +100,9 @@
   }
 
   async function saveDate(payload) {
-    const endpoint = isPersistedTarget(activeConfig) ? '/date-links/save' : '/dates/quick-create';
+    const endpoint = isPersistedTarget(activeConfig)
+      ? appConfig.urls.saveDateLink || joinScriptRoot('/date-links/save')
+      : appConfig.urls.quickDateCreate || joinScriptRoot('/dates/quick-create');
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -126,7 +135,7 @@
       return;
     }
 
-    const response = await fetch('/date-links/clear', {
+    const response = await fetch(appConfig.urls.clearDateLink || joinScriptRoot('/date-links/clear'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

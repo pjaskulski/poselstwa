@@ -7,6 +7,17 @@
   <link rel="stylesheet" href="{{ static_asset('style.css') }}">
 </head>
 <body>
+  <script>
+    window.APP_CONFIG = {
+      scriptRoot: {{ request.script_root|tojson }},
+      urls: {
+        quickDateCreate: {{ url_for('historical_date_quick_create')|tojson }},
+        saveDateLink: {{ url_for('date_link_save')|tojson }},
+        clearDateLink: {{ url_for('date_link_clear')|tojson }},
+        quickBibliographyCreate: {{ url_for('bibliography_item_quick_create')|tojson }}
+      }
+    };
+  </script>
   <header class="site-header">
     <div class="wrap">
       <div class="header-brand">

@@ -12,6 +12,7 @@ from typing import Any
 import click
 from flask import Flask, abort, flash, g, has_request_context, jsonify, redirect, render_template, request, send_file, session, url_for
 from markupsafe import Markup, escape
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,6 +24,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config['DATABASE'] = str(DB_PATH)
     app.config['SECRET_KEY'] = os.environ.get('POSELSTWA_SECRET_KEY', 'poselstwa-dev')
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     (BASE_DIR / 'instance').mkdir(exist_ok=True)
 
