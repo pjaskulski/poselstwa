@@ -81,3 +81,6 @@ Projekt przygotowywany z użyciem AI (Codex 5.4)
 ![screeenshot](doc/19.png)
 
 ![screeenshot](doc/20.png)
+
+Generowanie wersji pdf instrukcji użytkownika:
+`pandoc manual.md -o manual.pdf --pdf-engine=xelatex -V mainfont="DejaVu Serif" -V monofont="DejaVu Sans Mono"`

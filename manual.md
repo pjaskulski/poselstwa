@@ -41,6 +41,8 @@ Na stronie głównej widoczne są:
 - lista ostatnio dodanych osób,
 - lista ostatnio odwiedzanych poselstw.
 
+![Ekran startowy aplikacji (dashboard)](doc/01.png)
+
 ## 4. Oznaczenia i przyciski
 
 W całej aplikacji stosowany jest spójny zestaw ikon:
@@ -92,6 +94,8 @@ Na liście osób można:
 - otwierać kartę osoby,
 - usuwać osobę.
 
+![Moduł Osoby – tabela osób](doc/02.png)
+
 ### 6.2. Filtrowanie osób
 
 Filtrowanie tekstowe obejmuje między innymi:
@@ -121,6 +125,8 @@ Karta osoby zawiera podstawowe dane oraz sekcje dodatkowe:
 
 Każda sekcja ma przycisk `+` do dodawania oraz ikony edycji i usuwania przy istniejących rekordach.
 
+![Karta osoby](doc/08.png)
+
 ### 6.4. Edycja podstawowych danych osoby
 
 Formularz osoby obejmuje między innymi:
@@ -131,12 +137,16 @@ Formularz osoby obejmuje między innymi:
 - wykształcenie,
 - informacje dodatkowe.
 
+![Edycja podstawowych danych osoby](doc/09.png)
+
 ### 6.5. Warianty nazw
 
 Dla wariantu nazwy można określić:
 
 - sam wariant,
 - język wariantu.
+
+![Edycja wariantu nazwy osoby](doc/10.png)
 
 ### 6.6. Urzędy i funkcje
 
@@ -150,6 +160,8 @@ W formularzu urzędu lub funkcji można wprowadzić:
 - notę.
 
 Typ urzędu wybiera się z listy słownikowej dostępnej w module `Parametry`.
+
+![Edycja urzędu lub funkcji osoby](doc/11.png)
 
 ### 6.7. Obecność przy Kurii
 
@@ -165,6 +177,8 @@ Biogram zawiera:
 - tekst biogramu.
 
 Przycisk `Utwórz przypis` może automatycznie zbudować przypis z danych bibliograficznych i numeru strony / wpisu.
+
+![Edycja biogramu osoby](doc/11a.png)
 
 ### 6.9. Działalność osoby
 
@@ -184,6 +198,8 @@ Na liście poselstw można:
 - otwierać kartę poselstwa,
 - usuwać poselstwo wraz z powiązaniami.
 
+![Moduł Poselstwa – tabela poselstw](doc/03.png)
+
 ### 7.2. Filtrowanie poselstw
 
 Filtrowanie tekstowe obejmuje między innymi:
@@ -201,6 +217,8 @@ Sekcja `Filtrowanie dat` pozwala filtrować po zakresie wybranej daty:
 - data wyjazdu z Rzymu,
 - data powrotu do Polski.
 
+![Tabela poselstw z rozwiniętym filtrem dat](doc/04.png)
+
 ### 7.3. Karta poselstwa
 
 Karta poselstwa pokazuje:
@@ -209,6 +227,8 @@ Karta poselstwa pokazuje:
 - uczestników,
 - literaturę,
 - źródła.
+
+![Karta poselstwa](doc/12.png)
 
 ### 7.4. Edycja poselstwa
 
@@ -219,6 +239,8 @@ Formularz poselstwa obejmuje:
 - przedmiot misji,
 - daty kluczowych etapów poselstwa,
 - opis.
+
+![Edycja podstawowych danych poselstwa](doc/14.png)
 
 ### 7.5. Uczestnicy poselstwa
 
@@ -232,6 +254,8 @@ W formularzu uczestnika można określić:
 - notę.
 
 Lista urzędów w czasie poselstwa zależy od wybranej osoby.
+
+![Edycja uczestnika poselstwa](doc/15.png)
 
 ### 7.6. Literatura poselstwa
 
@@ -251,6 +275,8 @@ Na karcie poselstwa kafelek literatury pokazuje:
 - stronę,
 - komentarz.
 
+![Edycja pozycji literatury przypisanej do poselstwa](doc/12a.png)
+
 ### 7.7. Źródła
 
 Źródła są jednym z najważniejszych elementów modułu poselstw.
@@ -264,6 +290,8 @@ Każde źródło może zawierać:
 - tekst polski,
 - notę.
 
+![Lista źródeł podpiętych do poselstwa](doc/13.png)
+
 ## 8. Karta źródła
 
 Karta źródła służy do pracy z tekstem źródłowym i oznaczaniem motywów.
@@ -271,6 +299,8 @@ Karta źródła służy do pracy z tekstem źródłowym i oznaczaniem motywów.
 ### 8.1. Równoległy układ tekstów
 
 Tekst oryginalny i tekst polski są automatycznie dzielone na akapity. Na karcie źródła oba teksty są pokazywane równolegle, akapit do akapitu.
+
+![Karta źródła – widok tekstów źródła łacińskiego i polskiego](doc/16.png)
 
 ### 8.2. Edycja źródła
 
@@ -300,6 +330,8 @@ Na liście motywów można:
 - usuwać motywy,
 - przeglądać liczbę oznaczeń.
 
+![Moduł Motywy – lista definicji motywów](doc/05.png)
+
 ### 9.2. Formularz motywu
 
 Motyw ma własne dane:
@@ -323,6 +355,10 @@ Karta motywu pokazuje listę wszystkich oznaczeń tego motywu w źródłach. Dla
 
 Można też otworzyć modalny podgląd akapitu źródła z kolorowaniem oznaczeń.
 
+![Lista oznaczeń motywu w źródłach](doc/17.png)
+
+![Podgląd akapitu z oznaczeniem motywu](doc/18.png)
+
 ## 10. Moduł Literatura
 
 Moduł `Literatura` jest wspólną bazą pozycji bibliograficznych używanych w innych częściach aplikacji.
@@ -335,6 +371,8 @@ Na liście literatury można:
 - dodawać nowe pozycje,
 - edytować pozycje,
 - usuwać pozycje nieużywane.
+
+![Moduł Literatura – lista pozycji bibliograficznych](doc/06.png)
 
 ### 10.2. Formularz pozycji bibliograficznej
 
@@ -353,6 +391,8 @@ Formularz obejmuje między innymi:
 - dostęp,
 - notę.
 
+![Edycja pozycji bibliograficznej](doc/19.png)
+
 ## 11. Moduł Parametry
 
 Moduł `Parametry` przechowuje słowniki wykorzystywane w formularzach.
@@ -368,6 +408,10 @@ Każdy słownik pozwala:
 - edytować istniejące,
 - usuwać nieużywane wpisy.
 
+![Moduł Parametry](doc/07.png)
+
+![Słownik typów urzędów](doc/20.png)
+
 ## 12. Zasady pracy i bezpieczeństwo danych
 
 Podczas codziennej pracy warto pamiętać o kilku zasadach:
@@ -381,4 +425,3 @@ Wszystkie dane przechowywane są w bazie SQLite, znajdującej się w pliku:
 `instance/poselstwa.sqlite`
 
 Najważniejszym elementem kopii zapasowej powinien być właśnie ten plik.
-
