@@ -42,7 +42,7 @@ def create_app() -> Flask:
             return
         if g.current_user is None:
             flash('Zaloguj się, aby korzystać z aplikacji.', 'warning')
-            return redirect(url_for('auth_login', next=request.full_path if request.query_string else request.path))
+            return redirect(url_for('auth_login', next=current_prefixed_path()))
 
     @app.teardown_request
     def teardown_request(exception: Exception | None) -> None:
@@ -2336,8 +2336,23 @@ def fetch_current_user(db: sqlite3.Connection) -> sqlite3.Row | None:
 def safe_redirect_target(target: str | None) -> str:
     value = (target or '').strip()
     if value.startswith('/') and not value.startswith('//'):
+        script_root = request.script_root.rstrip('/') if has_request_context() else ''
+        if script_root and value != script_root and not value.startswith(f'{script_root}/'):
+            return f'{script_root}{value}'
         return value
     return url_for('index')
+
+
+def current_prefixed_path() -> str:
+    if not has_request_context():
+        return '/'
+    path = request.full_path if request.query_string else request.path
+    script_root = request.script_root.rstrip('/')
+    if not script_root:
+        return path
+    if path == '/':
+        return f'{script_root}/'
+    return f'{script_root}{path}'
 
 
 def verify_app_user_password(db: sqlite3.Connection, user: sqlite3.Row, password: str) -> bool:
