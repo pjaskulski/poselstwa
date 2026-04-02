@@ -9,29 +9,45 @@
     </div>
   </div>
   <form method="post" class="form-grid">
-    <div class="field">
-      <label for="item_type">Typ opracowania</label>
-      <select id="item_type" name="item_type">
-        {% for value, label in item_type_options %}
-        <option value="{{ value }}" {% if form_data.item_type == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
+    <div class="field full">
+      <div class="two-col">
+        <div class="field">
+          <label for="item_type">Typ opracowania</label>
+          <select id="item_type" name="item_type">
+            {% for value, label in item_type_options %}
+            <option value="{{ value }}" {% if form_data.item_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="short_citation">Skrót</label>
+          <input id="short_citation" type="text" name="short_citation" value="{{ form_data.short_citation }}" required>
+        </div>
+      </div>
     </div>
-    <div class="field">
-      <label for="short_citation">Skrót</label>
-      <input id="short_citation" type="text" name="short_citation" value="{{ form_data.short_citation }}" required>
-    </div>
-    <div class="field">
-      <label for="author_text">Autor</label>
-      <input id="author_text" type="text" name="author_text" value="{{ form_data.author_text }}">
-    </div>
-    <div class="field">
-      <label for="editor_text">Redaktor</label>
-      <input id="editor_text" type="text" name="editor_text" value="{{ form_data.editor_text }}">
+    <div class="field full">
+      <div class="two-col">
+        <div class="field">
+          <label for="author_text">Autor</label>
+          <input id="author_text" type="text" name="author_text" value="{{ form_data.author_text }}">
+        </div>
+        <div class="field">
+          <label for="editor_text">Redaktor</label>
+          <input id="editor_text" type="text" name="editor_text" value="{{ form_data.editor_text }}">
+        </div>
+      </div>
     </div>
     <div class="field full">
       <label for="title">Tytuł</label>
       <input id="title" type="text" name="title" value="{{ form_data.title }}">
+    </div>
+    <div class="field full js-journal-title-field {% if form_data.item_type != 'article' %}hidden{% endif %}">
+      <label for="journal_title">Czasopismo</label>
+      <input id="journal_title" type="text" name="journal_title" value="{{ form_data.journal_title }}">
+    </div>
+    <div class="field full js-book-title-field {% if form_data.item_type != 'chapter' %}hidden{% endif %}">
+      <label for="book_title">Tytuł książki / monografii</label>
+      <input id="book_title" type="text" name="book_title" value="{{ form_data.book_title }}">
     </div>
     <div class="field">
       <label for="publication_place">Miejsce wydania</label>
@@ -67,4 +83,18 @@
     </div>
   </form>
 </section>
+<script>
+  (function () {
+    const typeSelect = document.getElementById('item_type');
+    const journalField = document.querySelector('.js-journal-title-field');
+    const bookField = document.querySelector('.js-book-title-field');
+    if (!typeSelect || !journalField || !bookField) return;
+    const toggleField = () => {
+      journalField.classList.toggle('hidden', typeSelect.value !== 'article');
+      bookField.classList.toggle('hidden', typeSelect.value !== 'chapter');
+    };
+    typeSelect.addEventListener('change', toggleField);
+    toggleField();
+  })();
+</script>
 {% endblock %}

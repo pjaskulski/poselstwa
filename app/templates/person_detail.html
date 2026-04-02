@@ -80,6 +80,9 @@
       <div class="muted">{{ render_date(prefixed_date_label(row.start_kind, row.start_label) if row.start_label else None, prefixed_date_label(row.end_kind, row.end_label) if row.end_label else None) }}</div>
       <div>{{ row.office_type or '—' }}</div>
       <div class="muted">Deskrypcja źródłowa: {{ row.source_designation or '—' }}</div>
+      {% if row.bibliography_short_citation %}
+      <div class="muted">Bibliografia: {{ row.bibliography_short_citation }}{% if row.reference_locator %}, {{ row.reference_locator }}{% endif %}</div>
+      {% endif %}
       {% if row.comment %}<p>{{ row.comment }}</p>{% endif %}
     </div>
     {% else %}<p>Brak danych.</p>{% endfor %}

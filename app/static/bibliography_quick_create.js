@@ -9,6 +9,9 @@
   const errorBox = document.getElementById('quick-bibliography-errors');
   const targetSelectInput = form.elements.namedItem('target_select_id');
   const closeButtons = modal.querySelectorAll('[data-bibliography-modal-close]');
+  const typeSelect = document.getElementById('quick-bibliography-item-type');
+  const journalField = modal.querySelector('.js-quick-journal-title-field');
+  const bookField = modal.querySelector('.js-quick-book-title-field');
 
   function hideErrors() {
     errorBox.textContent = '';
@@ -24,6 +27,7 @@
     form.reset();
     hideErrors();
     targetSelectInput.value = targetSelectId;
+    toggleJournalField();
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
     const shortCitation = document.getElementById('quick-bibliography-short-citation');
@@ -35,6 +39,14 @@
   function closeModal() {
     modal.classList.add('hidden');
     modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function toggleJournalField() {
+    if (!typeSelect || !journalField || !bookField) {
+      return;
+    }
+    journalField.classList.toggle('hidden', typeSelect.value !== 'article');
+    bookField.classList.toggle('hidden', typeSelect.value !== 'chapter');
   }
 
   document.querySelectorAll('.quick-bibliography-trigger').forEach((button) => {
@@ -50,6 +62,11 @@
   closeButtons.forEach((button) => {
     button.addEventListener('click', closeModal);
   });
+
+  if (typeSelect) {
+    typeSelect.addEventListener('change', toggleJournalField);
+    toggleJournalField();
+  }
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();

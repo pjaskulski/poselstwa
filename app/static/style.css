@@ -19,7 +19,11 @@ body {
 a { color: #5a3f23; text-decoration: none; }
 a:hover { text-decoration: underline; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 1rem; }
-.site-header { background: #efe7d8; border-bottom: 1px solid var(--line); }
+.site-header {
+  position: relative;
+  background: #efe7d8;
+  border-bottom: 1px solid var(--line);
+}
 .site-header .wrap {
   display: flex;
   align-items: flex-start;
@@ -48,7 +52,7 @@ nav a.active {
   flex-wrap: wrap;
 }
 .header-corner {
-  position: fixed;
+  position: absolute;
   top: .9rem;
   right: 1rem;
   z-index: 40;

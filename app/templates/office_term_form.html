@@ -42,14 +42,22 @@
         <button type="button" class="button ghost quick-date-trigger icon-action" title="Ustaw datę końcową" aria-label="Ustaw datę końcową" data-entity-type="office_term" data-record-id="{{ request.view_args.office_id if request.view_args.office_id else 0 }}" data-field-name="end_date_id" data-target-input="end_date_id" data-target-label="end_date_id_label">✎</button>
       </div>
     </div>
-    <div class="field">
-      <label for="bibliography_item_id">Bibliografia</label>
-      <select id="bibliography_item_id" name="bibliography_item_id">
-        <option value="">brak</option>
-        {% for item in bibliography_options %}
-        <option value="{{ item.id }}" {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}>{{ item.short_citation }}</option>
-        {% endfor %}
-      </select>
+    <div class="field full">
+      <div class="two-col">
+        <div class="field">
+          <label for="bibliography_item_id">Bibliografia</label>
+          <select id="bibliography_item_id" name="bibliography_item_id">
+            <option value="">brak</option>
+            {% for item in bibliography_options %}
+            <option value="{{ item.id }}" {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}>{{ item.short_citation }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="reference_locator">Strona / rozdział / wpis</label>
+          <input id="reference_locator" type="text" name="reference_locator" value="{{ form_data.reference_locator }}">
+        </div>
+      </div>
     </div>
     <div class="field full">
       <label for="note">Nota</label>

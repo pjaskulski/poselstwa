@@ -36,6 +36,8 @@ def create_app() -> Flask:
         ensure_bibliography_item_compatibility(g.db)
         ensure_embassy_bibliography_compatibility(g.db)
         ensure_biography_note_compatibility(g.db)
+        ensure_office_term_compatibility(g.db)
+        ensure_source_text_compatibility(g.db)
         g.current_user = fetch_current_user(g.db)
         endpoint = request.endpoint or ''
         if endpoint == 'static' or endpoint in {'auth_login', 'auth_logout'}:
@@ -461,10 +463,12 @@ def create_app() -> Flask:
         offices = db.execute(
             '''
             SELECT ot.*, sd.display_label AS start_label, ed.display_label AS end_label,
-                   sd.date_kind AS start_kind, ed.date_kind AS end_kind
+                   sd.date_kind AS start_kind, ed.date_kind AS end_kind,
+                   bi.short_citation AS bibliography_short_citation
             FROM office_term ot
             LEFT JOIN historical_date sd ON sd.id = ot.start_date_id
             LEFT JOIN historical_date ed ON ed.id = ot.end_date_id
+            LEFT JOIN bibliography_item bi ON bi.id = ot.bibliography_item_id
             WHERE ot.person_id = ?
             ORDER BY COALESCE(sd.sort_key_start, ''), ot.id
             ''',
@@ -1346,6 +1350,7 @@ def create_app() -> Flask:
             embassy=embassy,
             cancel_url=url_for('embassy_detail', embassy_id=embassy_id),
             source_type_options=fetch_source_type_options(g.db, form_data['source_type'] or None),
+            bibliography_options=fetch_bibliography_items(g.db),
         )
 
     @app.route('/sources/<int:source_id>/edit', methods=['GET', 'POST'])
@@ -1374,6 +1379,7 @@ def create_app() -> Flask:
             embassy=embassy,
             cancel_url=url_for('source_detail', source_id=source_id),
             source_type_options=fetch_source_type_options(g.db, form_data['source_type'] or None),
+            bibliography_options=fetch_bibliography_items(g.db),
         )
 
     @app.route('/sources/<int:source_id>/delete', methods=['POST'])
@@ -1458,10 +1464,12 @@ def create_app() -> Flask:
         source = db.execute(
             '''
             SELECT st.*, e.title AS embassy_title, e.year_label,
-                   hd.display_label AS source_date_label, hd.date_kind AS source_date_kind
+                   hd.display_label AS source_date_label, hd.date_kind AS source_date_kind,
+                   bi.short_citation AS bibliography_short_citation
             FROM source_text st
             JOIN embassy e ON e.id = st.embassy_id
             LEFT JOIN historical_date hd ON hd.id = st.source_date_id
+            LEFT JOIN bibliography_item bi ON bi.id = st.bibliography_item_id
             WHERE st.id = ?
             ''',
             (source_id,),
@@ -1994,8 +2002,17 @@ def ensure_bibliography_item_compatibility(db: sqlite3.Connection) -> None:
         row['name']
         for row in db.execute("PRAGMA table_info('bibliography_item')").fetchall()
     }
+    changed = False
     if 'publisher_text' not in columns:
         db.execute("ALTER TABLE bibliography_item ADD COLUMN publisher_text TEXT")
+        changed = True
+    if 'journal_title' not in columns:
+        db.execute("ALTER TABLE bibliography_item ADD COLUMN journal_title TEXT")
+        changed = True
+    if 'book_title' not in columns:
+        db.execute("ALTER TABLE bibliography_item ADD COLUMN book_title TEXT")
+        changed = True
+    if changed:
         db.commit()
 
 
@@ -2016,6 +2033,26 @@ def ensure_biography_note_compatibility(db: sqlite3.Connection) -> None:
     }
     if 'reference_locator' not in columns:
         db.execute("ALTER TABLE biography_note ADD COLUMN reference_locator TEXT")
+        db.commit()
+
+
+def ensure_office_term_compatibility(db: sqlite3.Connection) -> None:
+    columns = {
+        row['name']
+        for row in db.execute("PRAGMA table_info('office_term')").fetchall()
+    }
+    if 'reference_locator' not in columns:
+        db.execute("ALTER TABLE office_term ADD COLUMN reference_locator TEXT")
+        db.commit()
+
+
+def ensure_source_text_compatibility(db: sqlite3.Connection) -> None:
+    columns = {
+        row['name']
+        for row in db.execute("PRAGMA table_info('source_text')").fetchall()
+    }
+    if 'reference_locator' not in columns:
+        db.execute("ALTER TABLE source_text ADD COLUMN reference_locator TEXT")
         db.commit()
 
 
@@ -2670,6 +2707,7 @@ def empty_office_term_form(person_id: int) -> dict[str, str]:
         'start_date_id': '',
         'end_date_id': '',
         'bibliography_item_id': '',
+        'reference_locator': '',
         'note': '',
     }
 
@@ -2683,6 +2721,7 @@ def office_term_form_data_from_request(person_id: int) -> dict[str, str]:
         'start_date_id': form_value('start_date_id'),
         'end_date_id': form_value('end_date_id'),
         'bibliography_item_id': form_value('bibliography_item_id'),
+        'reference_locator': form_value('reference_locator'),
         'note': form_value('note'),
     }
 
@@ -2696,6 +2735,7 @@ def office_term_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
         'start_date_id': str(row['start_date_id'] or ''),
         'end_date_id': str(row['end_date_id'] or ''),
         'bibliography_item_id': str(row['bibliography_item_id'] or ''),
+        'reference_locator': row['reference_locator'] or '',
         'note': row['comment'] or '',
     }
 
@@ -2715,8 +2755,8 @@ def insert_office_term(db: sqlite3.Connection, form_data: dict[str, str]) -> int
         '''
         INSERT INTO office_term (
             uuid, person_id, office_name, office_type, function_name, source_designation,
-            start_date_id, end_date_id, date_note, certainty, bibliography_item_id, comment
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            start_date_id, end_date_id, date_note, certainty, bibliography_item_id, reference_locator, comment
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         (
             str(uuid.uuid4()),
@@ -2730,6 +2770,7 @@ def insert_office_term(db: sqlite3.Connection, form_data: dict[str, str]) -> int
             None,
             'certain',
             parse_optional_int(form_data['bibliography_item_id']),
+            form_data['reference_locator'] or None,
             form_data['note'] or None,
         ),
     )
@@ -2750,6 +2791,7 @@ def update_office_term(db: sqlite3.Connection, office_id: int, form_data: dict[s
             date_note = ?,
             certainty = ?,
             bibliography_item_id = ?,
+            reference_locator = ?,
             comment = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
@@ -2764,6 +2806,7 @@ def update_office_term(db: sqlite3.Connection, office_id: int, form_data: dict[s
             None,
             'certain',
             parse_optional_int(form_data['bibliography_item_id']),
+            form_data['reference_locator'] or None,
             form_data['note'] or None,
             office_id,
         ),
@@ -3296,6 +3339,8 @@ def empty_bibliography_item_form() -> dict[str, str]:
         'author_text': '',
         'editor_text': '',
         'title': '',
+        'journal_title': '',
+        'book_title': '',
         'publication_place': '',
         'publisher_text': '',
         'publication_year': '',
@@ -3320,6 +3365,8 @@ def bibliography_item_form_data_from_mapping(data: Any) -> dict[str, str]:
         'author_text': read('author_text'),
         'editor_text': read('editor_text'),
         'title': read('title'),
+        'journal_title': read('journal_title'),
+        'book_title': read('book_title'),
         'publication_place': read('publication_place'),
         'publisher_text': read('publisher_text'),
         'publication_year': read('publication_year'),
@@ -3337,6 +3384,8 @@ def bibliography_item_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
         'author_text': row['author_text'] or '',
         'editor_text': row['editor_text'] or '',
         'title': row['title'] or '',
+        'journal_title': row['journal_title'] or '',
+        'book_title': row['book_title'] or '',
         'publication_place': row['publication_place'] or '',
         'publisher_text': row['publisher_text'] or '',
         'publication_year': row['publication_year'] or '',
@@ -3371,8 +3420,8 @@ def insert_bibliography_item(db: sqlite3.Connection, form_data: dict[str, str]) 
         '''
         INSERT INTO bibliography_item (
             uuid, item_type, short_citation, full_citation, author_text, editor_text,
-            title, publication_place, publisher_text, publication_year, volume_text, series_text, access_text, note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            title, journal_title, book_title, publication_place, publisher_text, publication_year, volume_text, series_text, access_text, note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         (
             str(uuid.uuid4()),
@@ -3382,6 +3431,8 @@ def insert_bibliography_item(db: sqlite3.Connection, form_data: dict[str, str]) 
             form_data['author_text'] or None,
             form_data['editor_text'] or None,
             form_data['title'] or None,
+            form_data['journal_title'] or None,
+            form_data['book_title'] or None,
             form_data['publication_place'] or None,
             form_data['publisher_text'] or None,
             form_data['publication_year'] or None,
@@ -3405,6 +3456,8 @@ def update_bibliography_item(db: sqlite3.Connection, item_id: int, form_data: di
             author_text = ?,
             editor_text = ?,
             title = ?,
+            journal_title = ?,
+            book_title = ?,
             publication_place = ?,
             publisher_text = ?,
             publication_year = ?,
@@ -3422,6 +3475,8 @@ def update_bibliography_item(db: sqlite3.Connection, item_id: int, form_data: di
             form_data['author_text'] or None,
             form_data['editor_text'] or None,
             form_data['title'] or None,
+            form_data['journal_title'] or None,
+            form_data['book_title'] or None,
             form_data['publication_place'] or None,
             form_data['publisher_text'] or None,
             form_data['publication_year'] or None,
@@ -3597,6 +3652,7 @@ def empty_source_text_form(embassy_id: int) -> dict[str, str]:
     return {
         'embassy_id': str(embassy_id),
         'bibliography_item_id': '',
+        'reference_locator': '',
         'source_type': '',
         'archive_signature': '',
         'edition_label': '',
@@ -3611,17 +3667,20 @@ def empty_source_text_form(embassy_id: int) -> dict[str, str]:
 
 def source_text_form_data_from_request(embassy_id: int, existing_row: sqlite3.Row | None = None) -> dict[str, str]:
     existing_bibliography_item_id = ''
+    existing_reference_locator = ''
     existing_source_date_id = ''
     existing_original_language_code = 'la'
     existing_translation_language_code = 'pl'
     if existing_row is not None:
         existing_bibliography_item_id = str(existing_row['bibliography_item_id'] or '')
+        existing_reference_locator = existing_row['reference_locator'] or ''
         existing_source_date_id = str(existing_row['source_date_id'] or '')
         existing_original_language_code = existing_row['original_language_code'] or 'la'
         existing_translation_language_code = existing_row['translation_language_code'] or 'pl'
     return {
         'embassy_id': str(embassy_id),
         'bibliography_item_id': form_value('bibliography_item_id') or existing_bibliography_item_id,
+        'reference_locator': form_value('reference_locator') or existing_reference_locator,
         'source_type': form_value('source_type'),
         'archive_signature': form_value('archive_signature'),
         'edition_label': form_value('edition_label'),
@@ -3638,6 +3697,7 @@ def source_text_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
     return {
         'embassy_id': str(row['embassy_id']),
         'bibliography_item_id': str(row['bibliography_item_id'] or ''),
+        'reference_locator': row['reference_locator'] or '',
         'source_type': row['source_type'] or '',
         'archive_signature': row['archive_signature'] or '',
         'edition_label': row['edition_label'] or '',
@@ -3666,8 +3726,8 @@ def insert_source_text(db: sqlite3.Connection, form_data: dict[str, str]) -> int
         INSERT INTO source_text (
             uuid, embassy_id, bibliography_item_id, source_type, archive_signature, edition_label,
             source_date_id, original_language_code, translation_language_code, original_text_full,
-            polish_text_full, editorial_note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            polish_text_full, editorial_note, reference_locator
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         (
             str(uuid.uuid4()),
@@ -3682,6 +3742,7 @@ def insert_source_text(db: sqlite3.Connection, form_data: dict[str, str]) -> int
             form_data['original_text_full'] or None,
             form_data['polish_text_full'] or None,
             form_data['editorial_note'] or None,
+            form_data['reference_locator'] or None,
         ),
     )
     source_id = int(cur.lastrowid)
@@ -3709,6 +3770,7 @@ def update_source_text(db: sqlite3.Connection, source_id: int, form_data: dict[s
             original_text_full = ?,
             polish_text_full = ?,
             editorial_note = ?,
+            reference_locator = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
         ''',
@@ -3723,6 +3785,7 @@ def update_source_text(db: sqlite3.Connection, source_id: int, form_data: dict[s
             form_data['original_text_full'] or None,
             form_data['polish_text_full'] or None,
             form_data['editorial_note'] or None,
+            form_data['reference_locator'] or None,
             source_id,
         ),
     )

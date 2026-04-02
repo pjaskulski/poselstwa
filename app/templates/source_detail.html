@@ -21,6 +21,7 @@
     <div><dt>Typ źródła</dt><dd>{{ source.source_type }}</dd></div>
     <div><dt>Sygnatura org.</dt><dd>{{ source.archive_signature or '—' }}</dd></div>
     <div><dt>Edycja</dt><dd>{{ source.edition_label or '—' }}</dd></div>
+    <div><dt>Bibliografia</dt><dd>{% if source.bibliography_short_citation %}{{ source.bibliography_short_citation }}{% if source.reference_locator %}, {{ source.reference_locator }}{% endif %}{% else %}—{% endif %}</dd></div>
     <div><dt>Nota</dt><dd>{{ source.editorial_note or '—' }}</dd></div>
   </dl>
 </section>

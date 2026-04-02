@@ -26,6 +26,19 @@
       <label for="edition_label">Edycja</label>
       <input id="edition_label" type="text" name="edition_label" value="{{ form_data.edition_label }}">
     </div>
+    <div class="field">
+      <label for="bibliography_item_id">Bibliografia</label>
+      <select id="bibliography_item_id" name="bibliography_item_id">
+        <option value="">brak</option>
+        {% for item in bibliography_options %}
+        <option value="{{ item.id }}" {% if form_data.bibliography_item_id == (item.id|string) %}selected{% endif %}>{{ item.short_citation }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="reference_locator">Strona / rozdział / wpis</label>
+      <input id="reference_locator" type="text" name="reference_locator" value="{{ form_data.reference_locator }}">
+    </div>
     <div class="field full">
       <label for="original_text_full">Tekst oryginalny</label>
       <textarea class="source-text-input" id="original_text_full" name="original_text_full">{{ form_data.original_text_full }}</textarea>
