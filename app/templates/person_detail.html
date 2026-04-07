@@ -95,17 +95,21 @@
     {% for row in presences %}
     <div class="entry-block">
       <div class="entry-head">
-        <strong>{{ row.place_name or 'miejsce nieustalone' }}</strong>
+        <strong>{{ row.presence_type or row.office_at_curia or 'obecność przy Stolicy Apostolskiej' }}</strong>
         <div class="table-icon-actions">
           <a class="icon-link" title="Edytuj obecność przy Stolicy Apostolskiej" aria-label="Edytuj obecność przy Stolicy Apostolskiej" href="{{ url_for('curia_presence_edit', person_id=person.id, presence_id=row.id) }}">✎</a>
-          <form method="post" action="{{ url_for('curia_presence_delete', person_id=person.id, presence_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć wpis o obecności przy Kurii?")|tojson }});'>
+          <form method="post" action="{{ url_for('curia_presence_delete', person_id=person.id, presence_id=row.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć wpis o obecności przy Stolicy Apostolskiej?")|tojson }});'>
             <button type="submit" class="icon-link icon-button" title="Usuń obecność przy Stolicy Apostolskiej" aria-label="Usuń obecność przy Stolicy Apostolskiej">×</button>
           </form>
         </div>
       </div>
       <div class="muted">{{ render_date(prefixed_date_label(row.start_kind, row.start_label) if row.start_label else None, prefixed_date_label(row.end_kind, row.end_label) if row.end_label else None) }}</div>
-      <div>{{ row.presence_type or '—' }} · {{ row.office_at_curia or '—' }}</div>
-      {% if row.scholarly_comment %}<p>{{ row.scholarly_comment }}</p>{% endif %}
+      <div>{{ row.year_label or '—' }} · {{ row.office_at_curia or '—' }}</div>
+      {% if row.bibliography_short_citation %}
+      <div class="muted">Bibliografia: {{ row.bibliography_short_citation }}{% if row.reference_locator %}, {{ row.reference_locator }}{% endif %}</div>
+      {% endif %}
+      {% if row.papal_register_text %}<div class="muted">Papieski register: {{ row.papal_register_text }}</div>{% endif %}
+      {% if row.note_text or row.scholarly_comment or row.working_comment %}<p>{{ row.note_text or row.scholarly_comment or row.working_comment }}</p>{% endif %}
     </div>
     {% else %}<p>Brak danych.</p>{% endfor %}
   </article>

@@ -38,6 +38,7 @@ def create_app() -> Flask:
         ensure_biography_note_compatibility(g.db)
         ensure_office_term_compatibility(g.db)
         ensure_source_text_compatibility(g.db)
+        ensure_curia_presence_compatibility(g.db)
         g.current_user = fetch_current_user(g.db)
         endpoint = request.endpoint or ''
         if endpoint == 'static' or endpoint in {'auth_login', 'auth_logout'}:
@@ -477,10 +478,12 @@ def create_app() -> Flask:
         presences = db.execute(
             '''
             SELECT cp.*, sd.display_label AS start_label, ed.display_label AS end_label,
-                   sd.date_kind AS start_kind, ed.date_kind AS end_kind
+                   sd.date_kind AS start_kind, ed.date_kind AS end_kind,
+                   bi.short_citation AS bibliography_short_citation
             FROM curia_presence cp
             LEFT JOIN historical_date sd ON sd.id = cp.start_date_id
             LEFT JOIN historical_date ed ON ed.id = cp.end_date_id
+            LEFT JOIN bibliography_item bi ON bi.id = cp.bibliography_item_id
             WHERE cp.person_id = ?
             ORDER BY COALESCE(sd.sort_key_start, ''), cp.id
             ''',
@@ -794,7 +797,7 @@ def create_app() -> Flask:
             errors = validate_curia_presence_form(form_data)
             if not errors:
                 insert_curia_presence(g.db, form_data)
-                flash('Dodano wpis o obecności przy Kurii.', 'success')
+                flash('Dodano wpis o obecności przy Stolicy Apostolskiej.', 'success')
                 return redirect(url_for('person_detail', person_id=person_id))
             for error in errors:
                 flash(error, 'error')
@@ -806,7 +809,7 @@ def create_app() -> Flask:
             form_data=form_data,
             person=person,
             date_options=fetch_historical_dates(g.db),
-            reference_options=fetch_reference_mentions(g.db),
+            bibliography_options=fetch_bibliography_items(g.db),
         )
 
     @app.route('/persons/<int:person_id>/presences/<int:presence_id>/edit', methods=['GET', 'POST'])
@@ -823,7 +826,7 @@ def create_app() -> Flask:
             errors = validate_curia_presence_form(form_data)
             if not errors:
                 update_curia_presence(g.db, presence_id, form_data)
-                flash('Zapisano zmiany obecności przy Kurii.', 'success')
+                flash('Zapisano zmiany obecności przy Stolicy Apostolskiej.', 'success')
                 return redirect(url_for('person_detail', person_id=person_id))
             for error in errors:
                 flash(error, 'error')
@@ -831,13 +834,13 @@ def create_app() -> Flask:
             form_data = curia_presence_form_data_from_row(presence)
         return render_template(
             'curia_presence_form.html',
-            form_title=f'Edycja obecności przy Kurii: {person["canonical_name"]}',
+            form_title=f'Edycja obecności przy Stolicy Apostolskiej: {person["canonical_name"]}',
             submit_label='Zapisz zmiany',
             form_action=url_for('curia_presence_edit', person_id=person_id, presence_id=presence_id),
             form_data=form_data,
             person=person,
             date_options=fetch_historical_dates(g.db),
-            reference_options=fetch_reference_mentions(g.db),
+            bibliography_options=fetch_bibliography_items(g.db),
         )
 
     @app.route('/persons/<int:person_id>/presences/<int:presence_id>/delete', methods=['POST'])
@@ -2056,6 +2059,28 @@ def ensure_source_text_compatibility(db: sqlite3.Connection) -> None:
         db.commit()
 
 
+def ensure_curia_presence_compatibility(db: sqlite3.Connection) -> None:
+    columns = {
+        row['name']
+        for row in db.execute("PRAGMA table_info('curia_presence')").fetchall()
+    }
+    changed = False
+    if 'bibliography_item_id' not in columns:
+        db.execute("ALTER TABLE curia_presence ADD COLUMN bibliography_item_id INTEGER")
+        changed = True
+    if 'reference_locator' not in columns:
+        db.execute("ALTER TABLE curia_presence ADD COLUMN reference_locator TEXT")
+        changed = True
+    if 'papal_register_text' not in columns:
+        db.execute("ALTER TABLE curia_presence ADD COLUMN papal_register_text TEXT")
+        changed = True
+    if 'note_text' not in columns:
+        db.execute("ALTER TABLE curia_presence ADD COLUMN note_text TEXT")
+        changed = True
+    if changed:
+        db.commit()
+
+
 def csv_response(filename: str, headers: list[str], rows: list[sqlite3.Row]):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -3144,13 +3169,13 @@ def empty_curia_presence_form(person_id: int) -> dict[str, str]:
         'start_date_id': '',
         'end_date_id': '',
         'year_label': '',
-        'place_name': '',
         'presence_type': '',
         'mention_type': '',
         'office_at_curia': '',
-        'reference_mention_id': '',
-        'scholarly_comment': '',
-        'working_comment': '',
+        'bibliography_item_id': '',
+        'reference_locator': '',
+        'papal_register_text': '',
+        'note': '',
     }
 
 
@@ -3160,13 +3185,13 @@ def curia_presence_form_data_from_request(person_id: int) -> dict[str, str]:
         'start_date_id': form_value('start_date_id'),
         'end_date_id': form_value('end_date_id'),
         'year_label': form_value('year_label'),
-        'place_name': form_value('place_name'),
         'presence_type': form_value('presence_type'),
         'mention_type': form_value('mention_type'),
         'office_at_curia': form_value('office_at_curia'),
-        'reference_mention_id': form_value('reference_mention_id'),
-        'scholarly_comment': form_value('scholarly_comment'),
-        'working_comment': form_value('working_comment'),
+        'bibliography_item_id': form_value('bibliography_item_id'),
+        'reference_locator': form_value('reference_locator'),
+        'papal_register_text': form_value('papal_register_text'),
+        'note': form_value('note'),
     }
 
 
@@ -3176,19 +3201,19 @@ def curia_presence_form_data_from_row(row: sqlite3.Row) -> dict[str, str]:
         'start_date_id': str(row['start_date_id'] or ''),
         'end_date_id': str(row['end_date_id'] or ''),
         'year_label': row['year_label'] or '',
-        'place_name': row['place_name'] or '',
         'presence_type': row['presence_type'] or '',
         'mention_type': row['mention_type'] or '',
         'office_at_curia': row['office_at_curia'] or '',
-        'reference_mention_id': str(row['reference_mention_id'] or ''),
-        'scholarly_comment': row['scholarly_comment'] or '',
-        'working_comment': row['working_comment'] or '',
+        'bibliography_item_id': str(row['bibliography_item_id'] or ''),
+        'reference_locator': row['reference_locator'] or '',
+        'papal_register_text': row['papal_register_text'] or '',
+        'note': row['note_text'] or row['scholarly_comment'] or row['working_comment'] or '',
     }
 
 
 def validate_curia_presence_form(form_data: dict[str, str]) -> list[str]:
-    if not (form_data['place_name'] or form_data['presence_type'] or form_data['office_at_curia']):
-        return ['Wpis obecności powinien zawierać przynajmniej miejsce, charakter obecności albo urząd przy Kurii.']
+    if not (form_data['presence_type'] or form_data['office_at_curia'] or form_data['year_label']):
+        return ['Wpis obecności powinien zawierać przynajmniej okres przebywania, charakter obecności albo urząd / rolę przy Stolicy Apostolskiej.']
     return []
 
 
@@ -3197,8 +3222,9 @@ def insert_curia_presence(db: sqlite3.Connection, form_data: dict[str, str]) -> 
         '''
         INSERT INTO curia_presence (
             uuid, person_id, start_date_id, end_date_id, year_label, place_name, presence_type,
-            mention_type, office_at_curia, reference_mention_id, scholarly_comment, working_comment
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            mention_type, office_at_curia, reference_mention_id, scholarly_comment, working_comment,
+            bibliography_item_id, reference_locator, papal_register_text, note_text
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         (
             str(uuid.uuid4()),
@@ -3206,13 +3232,17 @@ def insert_curia_presence(db: sqlite3.Connection, form_data: dict[str, str]) -> 
             parse_optional_int(form_data['start_date_id']),
             parse_optional_int(form_data['end_date_id']),
             form_data['year_label'] or None,
-            form_data['place_name'] or None,
+            None,
             form_data['presence_type'] or None,
             form_data['mention_type'] or None,
             form_data['office_at_curia'] or None,
-            parse_optional_int(form_data['reference_mention_id']),
-            form_data['scholarly_comment'] or None,
-            form_data['working_comment'] or None,
+            None,
+            None,
+            None,
+            parse_optional_int(form_data['bibliography_item_id']),
+            form_data['reference_locator'] or None,
+            form_data['papal_register_text'] or None,
+            form_data['note'] or None,
         ),
     )
     db.commit()
@@ -3233,6 +3263,10 @@ def update_curia_presence(db: sqlite3.Connection, presence_id: int, form_data: d
             reference_mention_id = ?,
             scholarly_comment = ?,
             working_comment = ?,
+            bibliography_item_id = ?,
+            reference_locator = ?,
+            papal_register_text = ?,
+            note_text = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
         ''',
@@ -3240,13 +3274,17 @@ def update_curia_presence(db: sqlite3.Connection, presence_id: int, form_data: d
             parse_optional_int(form_data['start_date_id']),
             parse_optional_int(form_data['end_date_id']),
             form_data['year_label'] or None,
-            form_data['place_name'] or None,
+            None,
             form_data['presence_type'] or None,
             form_data['mention_type'] or None,
             form_data['office_at_curia'] or None,
-            parse_optional_int(form_data['reference_mention_id']),
-            form_data['scholarly_comment'] or None,
-            form_data['working_comment'] or None,
+            None,
+            None,
+            None,
+            parse_optional_int(form_data['bibliography_item_id']),
+            form_data['reference_locator'] or None,
+            form_data['papal_register_text'] or None,
+            form_data['note'] or None,
             presence_id,
         ),
     )
