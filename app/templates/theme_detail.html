@@ -8,6 +8,7 @@
       <p>{{ theme.description_text or 'Brak opisu.' }}</p>
     </div>
     <div class="table-icon-actions">
+      <a class="icon-link" title="Eksportuj do DOCX" aria-label="Eksportuj do DOCX" href="{{ url_for('theme_export_docx', theme_id=theme.id) }}">↓</a>
       <a class="icon-link" title="Edytuj motyw" aria-label="Edytuj motyw" href="{{ url_for('theme_edit', theme_id=theme.id, return_to='detail') }}">✎</a>
       <form method="post" action="{{ url_for('theme_delete', theme_id=theme.id) }}" class="inline-icon-form" onsubmit='return confirm({{ ("Czy na pewno usunąć motyw: " ~ theme.name ~ "?")|tojson }});'>
         <button type="submit" class="icon-link icon-button" title="Usuń motyw" aria-label="Usuń motyw">×</button>

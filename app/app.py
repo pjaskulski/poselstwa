@@ -10,14 +10,15 @@ from pathlib import Path
 from typing import Any
 
 import click
+from app.db import DB_PATH, ensure_parameter_tables, get_db, get_schema_version
+from app.docx_export import build_theme_docx, theme_docx_filename
+from app.sync import DatabaseSyncError, backups_dir_for, database_metadata, export_filename, import_database_file, list_backups, restore_database_backup, save_upload_to_temporary_file
 from flask import Flask, abort, flash, g, has_request_context, jsonify, redirect, render_template, request, send_file, session, url_for
 from markupsafe import Markup, escape
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / 'instance' / 'poselstwa.sqlite'
-SCHEMA_PATH = BASE_DIR / 'doc' / 'schemat_bazy.sql'
 
 
 def create_app() -> Flask:
@@ -32,13 +33,6 @@ def create_app() -> Flask:
     def before_request() -> None:
         g.db = get_db(app)
         ensure_parameter_tables(g.db)
-        ensure_historical_date_compatibility(g.db)
-        ensure_bibliography_item_compatibility(g.db)
-        ensure_embassy_bibliography_compatibility(g.db)
-        ensure_biography_note_compatibility(g.db)
-        ensure_office_term_compatibility(g.db)
-        ensure_source_text_compatibility(g.db)
-        ensure_curia_presence_compatibility(g.db)
         g.current_user = fetch_current_user(g.db)
         endpoint = request.endpoint or ''
         if endpoint == 'static' or endpoint in {'auth_login', 'auth_logout'}:
@@ -134,6 +128,16 @@ def create_app() -> Flask:
         )
         db.commit()
         click.echo(f'Zmieniono hasło użytkownika: {normalized_username}')
+
+    @app.cli.command('migrate-db')
+    def migrate_db_command() -> None:
+        db = get_db(app)
+        try:
+            ensure_parameter_tables(db)
+            version = get_schema_version(db)
+            click.echo(f'Wersja schematu bazy: {version}')
+        finally:
+            db.close()
 
     @app.route('/')
     def index():
@@ -433,16 +437,134 @@ def create_app() -> Flask:
 
     @app.route('/persons/export.csv')
     def persons_export():
-        rows = g.db.execute(
+        base_rows = g.db.execute(
             '''
-            SELECT p.canonical_name, p.display_name, hd.display_label AS birth_label,
-                   p.education_note, p.activity_note
+            SELECT
+                p.id AS person_id,
+                p.canonical_name AS person_label,
+                CASE
+                    WHEN bd.display_label IS NOT NULL THEN
+                        CASE bd.date_kind
+                            WHEN 'circa' THEN
+                                CASE WHEN bd.display_label LIKE 'ok. %' THEN bd.display_label ELSE 'ok. ' || bd.display_label END
+                            WHEN 'before' THEN
+                                CASE WHEN bd.display_label LIKE 'przed %' THEN bd.display_label ELSE 'przed ' || bd.display_label END
+                            WHEN 'after' THEN
+                                CASE WHEN bd.display_label LIKE 'po %' THEN bd.display_label ELSE 'po ' || bd.display_label END
+                            ELSE bd.display_label
+                        END
+                    ELSE ''
+                END AS birth_label,
+                CASE
+                    WHEN dd.display_label IS NOT NULL THEN
+                        CASE dd.date_kind
+                            WHEN 'circa' THEN
+                                CASE WHEN dd.display_label LIKE 'ok. %' THEN dd.display_label ELSE 'ok. ' || dd.display_label END
+                            WHEN 'before' THEN
+                                CASE WHEN dd.display_label LIKE 'przed %' THEN dd.display_label ELSE 'przed ' || dd.display_label END
+                            WHEN 'after' THEN
+                                CASE WHEN dd.display_label LIKE 'po %' THEN dd.display_label ELSE 'po ' || dd.display_label END
+                            ELSE dd.display_label
+                        END
+                    ELSE ''
+                END AS death_label,
+                COALESCE(p.education_note, '') AS education_note,
+                COALESCE((
+                    SELECT GROUP_CONCAT(office_name, '; ')
+                    FROM (
+                        SELECT DISTINCT office_name
+                        FROM office_term
+                        WHERE person_id = p.id
+                          AND office_name IS NOT NULL
+                          AND TRIM(office_name) <> ''
+                        ORDER BY office_name
+                    )
+                ), '') AS office_names,
+                COALESCE((
+                    SELECT GROUP_CONCAT(embassy_title, '; ')
+                    FROM (
+                        SELECT DISTINCT e.title AS embassy_title
+                        FROM embassy_participant ep
+                        JOIN embassy e ON e.id = ep.embassy_id
+                        WHERE ep.person_id = p.id
+                          AND e.title IS NOT NULL
+                          AND TRIM(e.title) <> ''
+                        ORDER BY e.year_label, e.id
+                    )
+                ), '') AS embassy_titles,
+                COALESCE(p.activity_note, '') AS activity_note
             FROM person p
-            LEFT JOIN historical_date hd ON hd.id = p.birth_date_id
+            LEFT JOIN historical_date bd ON bd.id = p.birth_date_id
+            LEFT JOIN historical_date dd ON dd.id = p.death_date_id
             ORDER BY p.canonical_name ASC
             '''
         ).fetchall()
-        return csv_response('osoby.csv', ['Nazwa kanoniczna', 'Nazwa wyświetlana', 'Data urodzenia', 'Wykształcenie', 'Działalność'], rows)
+        presence_rows = g.db.execute(
+            '''
+            SELECT
+                cp.person_id,
+                cp.office_at_curia,
+                cp.presence_type,
+                sd.display_label AS start_label,
+                ed.display_label AS end_label,
+                sd.date_kind AS start_kind,
+                ed.date_kind AS end_kind
+            FROM curia_presence cp
+            LEFT JOIN historical_date sd ON sd.id = cp.start_date_id
+            LEFT JOIN historical_date ed ON ed.id = cp.end_date_id
+            ORDER BY cp.person_id, COALESCE(sd.sort_key_start, ''), cp.id
+            '''
+        ).fetchall()
+        presences_by_person: dict[int, list[str]] = {}
+        for row in presence_rows:
+            label = format_person_presence_export_label(row)
+            if not label:
+                continue
+            person_labels = presences_by_person.setdefault(int(row['person_id']), [])
+            if label not in person_labels:
+                person_labels.append(label)
+        rows = [
+            (
+                row['person_label'],
+                row['birth_label'],
+                row['death_label'],
+                row['education_note'],
+                row['office_names'],
+                row['embassy_titles'],
+                '; '.join(presences_by_person.get(int(row['person_id']), [])),
+                row['activity_note'],
+            )
+            for row in base_rows
+        ]
+        return csv_response(
+            'osoby.csv',
+            [
+                'Nazwa (miano) osoby',
+                'Data urodzenia',
+                'Data śmierci',
+                'Wykształcenie',
+                'Nazwy pełnionych urzędów',
+                'Poselstwa, w których uczestniczył',
+                'Obecności przy Stolicy Apostolskiej',
+                'Działalność',
+            ],
+            rows,
+            quoting=csv.QUOTE_ALL,
+        )
+
+    def format_person_presence_export_label(row: sqlite3.Row) -> str:
+        role_label = (
+            (row['office_at_curia'] or '').strip()
+            or (row['presence_type'] or '').strip()
+            or 'obecność przy Stolicy Apostolskiej'
+        )
+        period_label = render_date(
+            prefixed_date_label(row['start_kind'], row['start_label']) if row['start_label'] else None,
+            prefixed_date_label(row['end_kind'], row['end_label']) if row['end_label'] else None,
+        )
+        if period_label == '—':
+            return role_label
+        return f'{role_label} ({period_label})'
 
     @app.route('/persons/<int:person_id>')
     def person_detail(person_id: int):
@@ -947,14 +1069,72 @@ def create_app() -> Flask:
 
     @app.route('/embassies/export.csv')
     def embassies_export():
-        rows = g.db.execute(
+        base_rows = g.db.execute(
             '''
-            SELECT title, year_label, mission_subject
-            FROM embassy
-            ORDER BY COALESCE(year_label, '') DESC, id DESC
+            SELECT
+                e.id AS embassy_id,
+                e.title,
+                e.year_label,
+                ad.display_label AS appointment_label,
+                ad.date_kind AS appointment_kind,
+                aud.display_label AS audience_label,
+                aud.date_kind AS audience_kind,
+                e.mission_subject,
+                e.description_text
+            FROM embassy e
+            LEFT JOIN historical_date ad ON ad.id = e.appointment_date_id
+            LEFT JOIN historical_date aud ON aud.id = e.audience_date_id
+            ORDER BY COALESCE(e.year_label, '') DESC, e.id DESC
             '''
         ).fetchall()
-        return csv_response('poselstwa.csv', ['Tytuł', 'Rok', 'Przedmiot misji'], rows)
+        participant_rows = g.db.execute(
+            '''
+            SELECT
+                ep.embassy_id,
+                p.canonical_name,
+                ep.role_in_embassy,
+                ep.rank_order
+            FROM embassy_participant ep
+            JOIN person p ON p.id = ep.person_id
+            ORDER BY ep.embassy_id, COALESCE(ep.rank_order, 9999), p.canonical_name, ep.id
+            '''
+        ).fetchall()
+        participants_by_embassy: dict[int, list[str]] = {}
+        for row in participant_rows:
+            person_label = (row['canonical_name'] or '').strip()
+            role_label = (row['role_in_embassy'] or '').strip()
+            if not person_label:
+                continue
+            label = f'{person_label} ({role_label})' if role_label else person_label
+            embassy_labels = participants_by_embassy.setdefault(int(row['embassy_id']), [])
+            if label not in embassy_labels:
+                embassy_labels.append(label)
+        rows = [
+            (
+                row['title'] or '',
+                row['year_label'] or '',
+                prefixed_date_label(row['appointment_kind'], row['appointment_label']) if row['appointment_label'] else '',
+                prefixed_date_label(row['audience_kind'], row['audience_label']) if row['audience_label'] else '',
+                row['mission_subject'] or '',
+                '; '.join(participants_by_embassy.get(int(row['embassy_id']), [])),
+                row['description_text'] or '',
+            )
+            for row in base_rows
+        ]
+        return csv_response(
+            'poselstwa.csv',
+            [
+                'Tytuł',
+                'Rok',
+                'Data mianowania',
+                'Data audiencji',
+                'Przedmiot misji',
+                'Uczestnicy poselstwa',
+                'Opis',
+            ],
+            rows,
+            quoting=csv.QUOTE_ALL,
+        )
 
     @app.route('/embassies/<int:embassy_id>')
     def embassy_detail(embassy_id: int):
@@ -1656,47 +1836,24 @@ def create_app() -> Flask:
 
     @app.route('/themes/<int:theme_id>')
     def theme_detail(theme_id: int):
-        db = g.db
-        theme = db.execute('SELECT * FROM theme WHERE id = ?', (theme_id,)).fetchone()
-        if not theme:
-            abort(404)
-        annotations = db.execute(
-            '''
-            SELECT ta.*, st.edition_label, st.archive_signature, st.id AS source_id,
-                   e.id AS embassy_id, e.title AS embassy_title, e.year_label,
-                   ss.segment_no, ss.original_segment, ss.polish_segment
-            FROM theme_annotation ta
-            JOIN source_text st ON st.id = ta.source_text_id
-            JOIN embassy e ON e.id = st.embassy_id
-            LEFT JOIN source_segment ss ON ss.id = ta.source_segment_id
-            WHERE ta.theme_id = ?
-            ORDER BY e.year_label DESC, e.id DESC, COALESCE(ss.segment_no, 9999)
-            ''',
-            (theme_id,),
-        ).fetchall()
-        segment_annotation_map: dict[int, dict[str, list[sqlite3.Row]]] = {}
-        segment_ids = sorted({int(row['source_segment_id']) for row in annotations if row['source_segment_id']})
-        if segment_ids:
-            placeholders = ', '.join('?' for _ in segment_ids)
-            segment_annotations = db.execute(
-                f'''
-                SELECT ta.*, th.name AS theme_name, th.color_code
-                FROM theme_annotation ta
-                JOIN theme th ON th.id = ta.theme_id
-                WHERE ta.source_segment_id IN ({placeholders})
-                ORDER BY ta.char_start ASC, ta.char_end ASC, ta.id ASC
-                ''',
-                tuple(segment_ids),
-            ).fetchall()
-            for ann in segment_annotations:
-                per_language = segment_annotation_map.setdefault(int(ann['source_segment_id']), {'la': [], 'pl': []})
-                language_code = ann['text_language_code'] or 'pl'
-                per_language.setdefault(language_code, []).append(ann)
+        theme, annotations, segment_annotation_map = fetch_theme_detail_context(g.db, theme_id)
         return render_template(
             'theme_detail.html',
             theme=theme,
             annotations=annotations,
             segment_annotation_map=segment_annotation_map,
+        )
+
+    @app.route('/themes/<int:theme_id>/export.docx')
+    def theme_export_docx(theme_id: int):
+        theme, annotations, segment_annotation_map = fetch_theme_detail_context(g.db, theme_id)
+        content = build_theme_docx(theme, annotations, segment_annotation_map)
+        filename = theme_docx_filename(theme['name'], theme['slug'])
+        return send_file(
+            io.BytesIO(content),
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            as_attachment=True,
+            download_name=filename,
         )
 
     @app.route('/themes/<int:theme_id>/edit', methods=['GET', 'POST'])
@@ -1773,6 +1930,92 @@ def create_app() -> Flask:
             source_type_rows=source_type_rows,
             office_type_rows=office_type_rows,
         )
+
+    @app.route('/parameters/sync')
+    def sync_page():
+        db_path = Path(app.config['DATABASE'])
+        try:
+            db_metadata = database_metadata(db_path)
+            backups = list_backups(db_path)
+        except DatabaseSyncError as exc:
+            flash(str(exc), 'error')
+            return redirect(url_for('parameters_list'))
+        return render_template(
+            'sync.html',
+            db_metadata=db_metadata,
+            db_filename=db_path.name,
+            backup_dir=str(backups_dir_for(db_path)),
+            backups=backups,
+        )
+
+    @app.route('/parameters/sync/export')
+    def sync_export():
+        db_path = Path(app.config['DATABASE'])
+        db = g.pop('db', None)
+        if db is not None:
+            db.close()
+        return send_file(
+            db_path,
+            mimetype='application/vnd.sqlite3',
+            as_attachment=True,
+            download_name=export_filename(),
+        )
+
+    @app.route('/parameters/sync/import', methods=['POST'])
+    def sync_import():
+        upload = request.files.get('database_file')
+        if upload is None or not upload.filename:
+            flash('Wybierz plik bazy do importu.', 'error')
+            return redirect(url_for('sync_page'))
+        db_path = Path(app.config['DATABASE'])
+        try:
+            temp_path = save_upload_to_temporary_file(upload, db_path)
+        except DatabaseSyncError as exc:
+            flash(str(exc), 'error')
+            return redirect(url_for('sync_page'))
+        try:
+            db = g.pop('db', None)
+            if db is not None:
+                db.close()
+            result = import_database_file(temp_path, db_path)
+        except DatabaseSyncError as exc:
+            temp_path.unlink(missing_ok=True)
+            flash(str(exc), 'error')
+            return redirect(url_for('sync_page'))
+        finally:
+            temp_path.unlink(missing_ok=True)
+        flash(
+            'Zaimportowano bazę danych. '
+            f'Utworzono backup: {result.backup_path.name}. '
+            f'Wersja schematu: {result.metadata.schema_version}, '
+            f'osoby: {result.metadata.person_count}, '
+            f'poselstwa: {result.metadata.embassy_count}.',
+            'success',
+        )
+        flash('Jeżeli zaimportowana baza nie zawiera bieżącego użytkownika, konieczne może być ponowne logowanie.', 'warning')
+        return redirect(url_for('sync_page'))
+
+    @app.route('/parameters/sync/backups/<path:filename>/restore', methods=['POST'])
+    def sync_restore_backup(filename: str):
+        db_path = Path(app.config['DATABASE'])
+        try:
+            db = g.pop('db', None)
+            if db is not None:
+                db.close()
+            result = restore_database_backup(filename, db_path)
+        except DatabaseSyncError as exc:
+            flash(str(exc), 'error')
+            return redirect(url_for('sync_page'))
+        flash(
+            'Przywrócono bazę z backupu. '
+            f'Utworzono backup bieżącej wersji: {result.backup_path.name}. '
+            f'Wersja schematu: {result.metadata.schema_version}, '
+            f'osoby: {result.metadata.person_count}, '
+            f'poselstwa: {result.metadata.embassy_count}.',
+            'success',
+        )
+        flash('Jeżeli przywrócona baza nie zawiera bieżącego użytkownika, konieczne może być ponowne logowanie.', 'warning')
+        return redirect(url_for('sync_page'))
 
     @app.route('/parameters/source-types')
     def parameter_source_type_list():
@@ -1901,189 +2144,9 @@ def create_app() -> Flask:
     return app
 
 
-def get_db(app: Flask) -> sqlite3.Connection:
-    db = sqlite3.connect(app.config['DATABASE'])
-    db.row_factory = sqlite3.Row
-    db.execute('PRAGMA foreign_keys = ON')
-    return db
-
-
-def ensure_parameter_tables(db: sqlite3.Connection) -> None:
-    db.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS source_type_dictionary (
-            id INTEGER PRIMARY KEY,
-            uuid TEXT NOT NULL UNIQUE,
-            value TEXT NOT NULL UNIQUE,
-            label TEXT NOT NULL,
-            sort_order INTEGER NOT NULL DEFAULT 0,
-            is_active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-        '''
-    )
-    db.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS office_type_dictionary (
-            id INTEGER PRIMARY KEY,
-            uuid TEXT NOT NULL UNIQUE,
-            value TEXT NOT NULL UNIQUE,
-            label TEXT NOT NULL,
-            sort_order INTEGER NOT NULL DEFAULT 0,
-            is_active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-        '''
-    )
-    existing_values = {row['value'] for row in db.execute('SELECT value FROM source_type_dictionary').fetchall()}
-    source_values = [
-        row['source_type']
-        for row in db.execute(
-            '''
-            SELECT DISTINCT source_type
-            FROM source_text
-            WHERE source_type IS NOT NULL AND TRIM(source_type) <> ''
-            ORDER BY source_type ASC
-            '''
-        ).fetchall()
-    ]
-    for index, value in enumerate(source_values, start=1):
-        if value in existing_values:
-            continue
-        db.execute(
-            '''
-            INSERT INTO source_type_dictionary (uuid, value, label, sort_order, is_active)
-            VALUES (?, ?, ?, ?, 1)
-            ''',
-            (str(uuid.uuid4()), value, value, index * 10),
-        )
-    existing_office_values = {row['value'] for row in db.execute('SELECT value FROM office_type_dictionary').fetchall()}
-    office_values = [
-        'urząd kościelny',
-        'urząd świecki',
-        'inny',
-    ]
-    for index, value in enumerate(office_values, start=1):
-        if value in existing_office_values:
-            continue
-        db.execute(
-            '''
-            INSERT INTO office_type_dictionary (uuid, value, label, sort_order, is_active)
-            VALUES (?, ?, ?, ?, 1)
-            ''',
-            (str(uuid.uuid4()), value, value, index * 10),
-        )
-    db.commit()
-
-
-def ensure_historical_date_compatibility(db: sqlite3.Connection) -> None:
-    db.execute(
-        '''
-        UPDATE historical_date
-        SET date_kind = CASE
-            WHEN date_kind IN ('month', 'year') THEN 'exact'
-            WHEN date_kind = 'range' THEN 'circa'
-            ELSE date_kind
-        END
-        WHERE date_kind IN ('month', 'year', 'range')
-        '''
-    )
-    db.execute(
-        '''
-        UPDATE historical_date
-        SET certainty = 'uncertain'
-        WHERE certainty = 'possible'
-        '''
-    )
-    db.commit()
-
-
-def ensure_bibliography_item_compatibility(db: sqlite3.Connection) -> None:
-    columns = {
-        row['name']
-        for row in db.execute("PRAGMA table_info('bibliography_item')").fetchall()
-    }
-    changed = False
-    if 'publisher_text' not in columns:
-        db.execute("ALTER TABLE bibliography_item ADD COLUMN publisher_text TEXT")
-        changed = True
-    if 'journal_title' not in columns:
-        db.execute("ALTER TABLE bibliography_item ADD COLUMN journal_title TEXT")
-        changed = True
-    if 'book_title' not in columns:
-        db.execute("ALTER TABLE bibliography_item ADD COLUMN book_title TEXT")
-        changed = True
-    if changed:
-        db.commit()
-
-
-def ensure_embassy_bibliography_compatibility(db: sqlite3.Connection) -> None:
-    columns = {
-        row['name']
-        for row in db.execute("PRAGMA table_info('embassy_bibliography')").fetchall()
-    }
-    if 'page_range' not in columns:
-        db.execute("ALTER TABLE embassy_bibliography ADD COLUMN page_range TEXT")
-        db.commit()
-
-
-def ensure_biography_note_compatibility(db: sqlite3.Connection) -> None:
-    columns = {
-        row['name']
-        for row in db.execute("PRAGMA table_info('biography_note')").fetchall()
-    }
-    if 'reference_locator' not in columns:
-        db.execute("ALTER TABLE biography_note ADD COLUMN reference_locator TEXT")
-        db.commit()
-
-
-def ensure_office_term_compatibility(db: sqlite3.Connection) -> None:
-    columns = {
-        row['name']
-        for row in db.execute("PRAGMA table_info('office_term')").fetchall()
-    }
-    if 'reference_locator' not in columns:
-        db.execute("ALTER TABLE office_term ADD COLUMN reference_locator TEXT")
-        db.commit()
-
-
-def ensure_source_text_compatibility(db: sqlite3.Connection) -> None:
-    columns = {
-        row['name']
-        for row in db.execute("PRAGMA table_info('source_text')").fetchall()
-    }
-    if 'reference_locator' not in columns:
-        db.execute("ALTER TABLE source_text ADD COLUMN reference_locator TEXT")
-        db.commit()
-
-
-def ensure_curia_presence_compatibility(db: sqlite3.Connection) -> None:
-    columns = {
-        row['name']
-        for row in db.execute("PRAGMA table_info('curia_presence')").fetchall()
-    }
-    changed = False
-    if 'bibliography_item_id' not in columns:
-        db.execute("ALTER TABLE curia_presence ADD COLUMN bibliography_item_id INTEGER")
-        changed = True
-    if 'reference_locator' not in columns:
-        db.execute("ALTER TABLE curia_presence ADD COLUMN reference_locator TEXT")
-        changed = True
-    if 'papal_register_text' not in columns:
-        db.execute("ALTER TABLE curia_presence ADD COLUMN papal_register_text TEXT")
-        changed = True
-    if 'note_text' not in columns:
-        db.execute("ALTER TABLE curia_presence ADD COLUMN note_text TEXT")
-        changed = True
-    if changed:
-        db.commit()
-
-
-def csv_response(filename: str, headers: list[str], rows: list[sqlite3.Row]):
+def csv_response(filename: str, headers: list[str], rows: list[sqlite3.Row], quoting: int = csv.QUOTE_MINIMAL):
     buffer = io.StringIO()
-    writer = csv.writer(buffer)
+    writer = csv.writer(buffer, quoting=quoting)
     writer.writerow(headers)
     for row in rows:
         writer.writerow(list(row))
@@ -3940,6 +4003,48 @@ def fetch_active_themes(db: sqlite3.Connection, selected_id: str | None = None) 
         (parse_optional_int(selected_id),),
     ).fetchall()
     return rows
+
+
+def fetch_theme_detail_context(
+    db: sqlite3.Connection,
+    theme_id: int,
+) -> tuple[sqlite3.Row, list[sqlite3.Row], dict[int, dict[str, list[sqlite3.Row]]]]:
+    theme = db.execute('SELECT * FROM theme WHERE id = ?', (theme_id,)).fetchone()
+    if not theme:
+        abort(404)
+    annotations = db.execute(
+        '''
+        SELECT ta.*, st.edition_label, st.archive_signature, st.id AS source_id,
+               e.id AS embassy_id, e.title AS embassy_title, e.year_label,
+               ss.segment_no, ss.original_segment, ss.polish_segment
+        FROM theme_annotation ta
+        JOIN source_text st ON st.id = ta.source_text_id
+        JOIN embassy e ON e.id = st.embassy_id
+        LEFT JOIN source_segment ss ON ss.id = ta.source_segment_id
+        WHERE ta.theme_id = ?
+        ORDER BY e.year_label DESC, e.id DESC, COALESCE(ss.segment_no, 9999)
+        ''',
+        (theme_id,),
+    ).fetchall()
+    segment_annotation_map: dict[int, dict[str, list[sqlite3.Row]]] = {}
+    segment_ids = sorted({int(row['source_segment_id']) for row in annotations if row['source_segment_id']})
+    if segment_ids:
+        placeholders = ', '.join('?' for _ in segment_ids)
+        segment_annotations = db.execute(
+            f'''
+            SELECT ta.*, th.name AS theme_name, th.color_code
+            FROM theme_annotation ta
+            JOIN theme th ON th.id = ta.theme_id
+            WHERE ta.source_segment_id IN ({placeholders})
+            ORDER BY ta.char_start ASC, ta.char_end ASC, ta.id ASC
+            ''',
+            tuple(segment_ids),
+        ).fetchall()
+        for ann in segment_annotations:
+            per_language = segment_annotation_map.setdefault(int(ann['source_segment_id']), {'la': [], 'pl': []})
+            language_code = ann['text_language_code'] or 'pl'
+            per_language.setdefault(language_code, []).append(ann)
+    return theme, annotations, segment_annotation_map
 
 
 def theme_color_to_rgba(color_code: str | None, alpha: float) -> str:

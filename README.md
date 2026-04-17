@@ -15,11 +15,10 @@ Aplikacja obejmuje:
 ## Uruchomienie
 
 ```bash
-cd prototyp_poselstwa
+cd poselstwa
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python app/seed.py
 python run.py
 ```
 
@@ -27,6 +26,60 @@ Następnie należy otworzyć adres:
 
 ```text
 http://127.0.0.1:5000/
+```
+
+Przy pierwszym uruchomieniu aplikacja utworzy pustą bazę SQLite na podstawie pliku `doc/schemat_bazy.sql`, jeśli plik `instance/poselstwa.sqlite` jeszcze nie istnieje.
+Przy starcie aplikacja wykonuje też proste migracje zgodności istniejącej bazy, jeśli są potrzebne.
+Oznacza to, że aplikacja może pracować zarówno na pustej bazie tworzonej automatycznie, jak i na istniejącej bazie roboczej zachowanej w `instance/poselstwa.sqlite`.
+
+Jeżeli baza jest pusta, użytkownika można dodać poleceniem:
+
+```bash
+flask --app run.py create-user
+```
+
+Wersję schematu bazy można sprawdzić poleceniem:
+
+```bash
+flask --app run.py migrate-db
+```
+
+Polecenie jest bezpieczne dla istniejących danych: nie tworzy nowej bazy demonstracyjnej i nie usuwa rekordów.
+
+Po aktualizacji lokalnej kopii z GitHuba wystarczy zwykle:
+
+```bash
+git pull
+source .venv/bin/activate
+python run.py
+```
+
+Istniejąca baza w `instance/poselstwa.sqlite` pozostaje na miejscu.
+
+## Pierwsze uruchomienie produkcyjne
+
+Jeżeli użytkownik uruchamia aplikację na pustym środowisku i chce rozpocząć pracę od własnych danych, bez żadnych rekordów demonstracyjnych, wystarczy:
+
+```bash
+cd poselstwa
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python run.py
+```
+
+Po pierwszym uruchomieniu aplikacja założy pustą bazę `instance/poselstwa.sqlite`. Następnie należy w drugim terminalu utworzyć pierwszego użytkownika:
+
+```bash
+source .venv/bin/activate
+flask --app run.py create-user
+```
+
+Od tego momentu można zalogować się do aplikacji i wprowadzać dane ręcznie. Przy kolejnych uruchomieniach wystarczy:
+
+```bash
+source .venv/bin/activate
+python run.py
 ```
 
 ## Wdrożenie na Ubuntu z gunicorn i nginx
@@ -52,7 +105,6 @@ cd poselstwa
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python app/seed.py
 ```
 
 Następnie:

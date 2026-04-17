@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Synchronizacja{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="title-row">
+    <div>
+      <h2>Synchronizacja bazy</h2>
+      <p class="muted">Eksport i import całej bazy SQLite. Import zastępuje obecną bazę po uprzednim utworzeniu kopii bezpieczeństwa.</p>
+    </div>
+  </div>
+  <dl class="meta-grid">
+    <div><dt>Aktywna baza</dt><dd>{{ db_filename }}</dd></div>
+    <div><dt>Wersja schematu</dt><dd>{{ db_metadata.schema_version }}</dd></div>
+    <div><dt>Liczba osób</dt><dd>{{ db_metadata.person_count }}</dd></div>
+    <div><dt>Liczba poselstw</dt><dd>{{ db_metadata.embassy_count }}</dd></div>
+    <div class="full-width-meta"><dt>Katalog backupów</dt><dd>{{ backup_dir }}</dd></div>
+  </dl>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h3>Eksport bazy</h3>
+      <p class="muted">Pobierz aktualną bazę SQLite na dysk komputera. Plik można później zaimportować do innej instancji aplikacji.</p>
+    </div>
+  </div>
+  <div class="form-actions">
+    <a class="button" href="{{ url_for('sync_export') }}">Pobierz aktualną bazę</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h3>Import bazy</h3>
+      <p class="muted">Przed podmianą aplikacja utworzy kopię bezpieczeństwa bieżącej bazy w katalogu backupów. Importowana baza musi być poprawnym plikiem SQLite zgodnym ze schematem aplikacji.</p>
+    </div>
+  </div>
+  <form method="post" action="{{ url_for('sync_import') }}" enctype="multipart/form-data" onsubmit='return confirm("Import zastąpi całą bieżącą bazę danymi z przesłanego pliku. Przed operacją zostanie utworzony backup. Czy kontynuować?");'>
+    <div class="field full">
+      <label for="database_file">Plik bazy SQLite</label>
+      <input id="database_file" type="file" name="database_file" accept=".sqlite,.sqlite3,.db,application/vnd.sqlite3,application/octet-stream" required>
+    </div>
+    <div class="form-actions">
+      <button type="submit">Importuj i zastąp bazę</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <h3>Backupy i przywracanie</h3>
+      <p class="muted">Poniżej znajdują się kopie bezpieczeństwa utworzone automatycznie przed importem i przywracaniem. Przywrócenie backupu najpierw archiwizuje obecną bazę.</p>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Plik</th>
+        <th>Data</th>
+        <th>Schemat</th>
+        <th>Osoby</th>
+        <th>Poselstwa</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for backup in backups %}
+      <tr>
+        <td>
+          <strong>{{ backup.filename }}</strong>
+          {% if not backup.is_valid and backup.error %}
+          <div class="muted">{{ backup.error }}</div>
+          {% endif %}
+        </td>
+        <td>{{ backup.modified_at }}</td>
+        <td>{{ backup.metadata.schema_version if backup.metadata else '—' }}</td>
+        <td>{{ backup.metadata.person_count if backup.metadata else '—' }}</td>
+        <td>{{ backup.metadata.embassy_count if backup.metadata else '—' }}</td>
+        <td>
+          {% if backup.is_valid %}
+          <form method="post" action="{{ url_for('sync_restore_backup', filename=backup.filename) }}" onsubmit='return confirm({{ ("Przywrócić backup „" ~ backup.filename ~ "”? Obecna baza zostanie wcześniej zarchiwizowana.")|tojson }});'>
+            <button type="submit" class="button secondary text-action">Przywróć</button>
+          </form>
+          {% else %}
+          <span class="muted">Niedostępny</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Brak backupów.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

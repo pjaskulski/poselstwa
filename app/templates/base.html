@@ -31,7 +31,7 @@
         <a href="{{ url_for('embassies_list') }}" class="{% if endpoint == 'embassies_list' or endpoint.startswith('embassy_') or endpoint.startswith('source_') or endpoint.startswith('theme_annotation_') %}active{% endif %}">Poselstwa</a>
         <a href="{{ url_for('themes_list') }}" class="{% if endpoint in ['themes_list', 'theme_detail'] %}active{% endif %}">Motywy</a>
         <a href="{{ url_for('bibliography_list') }}" class="{% if endpoint == 'bibliography_list' or endpoint.startswith('bibliography_') %}active{% endif %}">Literatura</a>
-        <a href="{{ url_for('parameters_list') }}" class="{% if endpoint == 'parameters_list' or endpoint.startswith('parameter_') %}active{% endif %}">Parametry</a>
+        <a href="{{ url_for('parameters_list') }}" class="{% if endpoint == 'parameters_list' or endpoint.startswith('parameter_') or endpoint.startswith('sync_') %}active{% endif %}">Parametry</a>
       </nav>
       {% endif %}
     </div>
